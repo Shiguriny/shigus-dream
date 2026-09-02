@@ -24,6 +24,9 @@ class BackendConnection(
     enum class State { DISCONNECTED, CONNECTING, AUTHENTICATING, ONLINE }
 
     interface Handler {
+        /** WebSocket открыт — самое время аутентифицироваться. Вызывается на WS-потоке. */
+        fun onConnected()
+
         /** Вызывается на сетевом/WS-потоке. */
         fun onActionExecute(requestId: String, action: String, args: JsonObject, commandId: String?)
         fun onPresence(users: List<PresenceUser>)
@@ -31,6 +34,9 @@ class BackendConnection(
         fun onAuthError(code: String, message: String)
         fun onActionResult(requestId: String, action: String, status: String, error: String?)
         fun onStateChange(state: State)
+
+        /** Запланировано переподключение через указанное число секунд. */
+        fun onReconnectIn(seconds: Long) {}
     }
 
     data class PresenceUser(val username: String, val online: Boolean, val role: String)
@@ -59,6 +65,11 @@ class BackendConnection(
         if (state.get() != State.DISCONNECTED) return
         setState(State.CONNECTING)
         val ws = WsClient(wsUrl, object : WsClient.Listener {
+            override fun onOpen() {
+                setState(State.AUTHENTICATING)
+                handler?.onConnected()
+            }
+
             override fun onText(message: String) = handleIncoming(message)
             override fun onClosed(code: Int, reason: String) {
                 ShigusDream.LOGGER.info("ws закрыт: code={} reason={}", code, reason)
@@ -113,6 +124,7 @@ class BackendConnection(
             else -> 30L
         }
         ShigusDream.LOGGER.info("Переподключение через {} с (попытка {})", delay, attempt + 1)
+        handler?.onReconnectIn(delay)
         reconnectTask?.cancel(false)
         reconnectTask = scheduler.schedule({ connect() }, delay, TimeUnit.SECONDS)
     }

@@ -18,6 +18,8 @@ class WsClient(
     private val listener: Listener,
 ) {
     interface Listener {
+        /** WebSocket установлен (HTTP 101). */
+        fun onOpen()
         fun onText(message: String)
         fun onClosed(code: Int, reason: String)
         fun onError(t: Throwable?)
@@ -39,6 +41,7 @@ class WsClient(
             .buildAsync(URI.create(url), object : WebSocket.Listener {
                 override fun onOpen(webSocket: WebSocket) {
                     this@WsClient.webSocket.set(webSocket)
+                    listener.onOpen()
                     webSocket.request(1)
                 }
 

@@ -122,6 +122,35 @@ object ShigusDreamClient : ClientModInitializer {
     // ------------------------------------------------------------------ handlers
 
     private class ConnectionHandler : BackendConnection.Handler {
+
+        override fun onConnected() {
+            if (auth.hasRefreshToken) {
+                connection.sendAuth()
+                return
+            }
+            // Первичное привязывание: HTTP-запрос кода — вне MC-потока, код показываем в чате.
+            Thread {
+                val mc = Minecraft.getInstance()
+                val mcUuid = mc.user?.profileId?.toString()
+                val mcName = mc.user?.name
+                if (mcUuid == null || mcName == null) {
+                    chatFeedback("§c[Shigu's Dream]§7 Не удалось получить UUID профиля")
+                    return@Thread
+                }
+                when (val outcome = auth.requestLinkCode(mcUuid, mcName)) {
+                    is AuthManager.LinkOutcome.CodeIssued -> {
+                        chatFeedback("§b[Shigu's Dream]§7 Код привязки: §e${outcome.code}§7 — откройте §9${outcome.confirmUrl}§7 и введите его (действует 15 минут)")
+                        connection.sendAuthWithLinkCode(outcome.code)
+                    }
+
+                    is AuthManager.LinkOutcome.AlreadyLinked -> connection.sendAuth()
+
+                    is AuthManager.LinkOutcome.Failed ->
+                        chatFeedback("§c[Shigu's Dream]§7 ${outcome.error}")
+                }
+            }.apply { isDaemon = true }.start()
+        }
+
         override fun onActionExecute(requestId: String, action: String, args: JsonObject, commandId: String?) {
             ShigusDreamRuntime.dispatcher?.handle(requestId, action, args)
         }
@@ -138,15 +167,26 @@ object ShigusDreamClient : ClientModInitializer {
         override fun onAuthError(code: String, message: String) {
             if (code == "pending") {
                 chatFeedback("§e[Shigu's Dream]§7 $message")
+                return
+            }
+            if (code == "invalid_token" || code == "expired_token") {
+                // Refresh-токен истёк/отозван — сбрасываем и просим привязать аккаунт заново по коду.
+                auth.clear()
+                chatFeedback("§e[Shigu's Dream]§7 Сессия недействительна ($message). Переподключитесь (J) — получите новый код привязки.")
             } else {
                 chatFeedback("§c[Shigu's Dream]§7 Ошибка аутентификации: $message")
-                ShigusDream.LOGGER.warn("auth error: {} {}", code, message)
             }
+            ShigusDream.LOGGER.warn("auth error: {} {}", code, message)
         }
 
         override fun onActionResult(requestId: String, action: String, status: String, error: String?) {
             lastResultText = if (status == "executed") "✔ $action выполнено" else "✖ ${error ?: "failed"}"
             chatFeedback("§7[Shigu's Dream] $lastResultText")
+        }
+
+        override fun onReconnectIn(seconds: Long) {
+            val note = if (seconds >= 30) " (сервер мог уснуть — просыпается до минуты)" else ""
+            chatFeedback("§7[Shigu's Dream] Переподключение через ${seconds}с$note")
         }
 
         override fun onStateChange(state: BackendConnection.State) {
