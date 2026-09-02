@@ -1,20 +1,25 @@
 package com.shigusdream.network
 
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import com.shigusdream.ShigusDream
 import com.shigusdream.auth.AuthManager
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Управляет подключением к backend: состояния, экспоненциальный backoff
- * (1s → 2s → 4s → 8s → 16s → 30s), ping/pong, presence-снапшот и диспетчеризация
- * входящих action.execute.
+ * Управляет подключением к backend: состояния, health-проба (будит «спящий» бесплатный Render),
+ * экспоненциальный backoff (1s → 2s → 4s → 8s → 16s → 30s), ping/pong, presence-снапшот
+ * и диспетчеризация входящих action.execute.
  */
 class BackendConnection(
     private val wsUrl: String,
@@ -35,6 +40,9 @@ class BackendConnection(
         fun onActionResult(requestId: String, action: String, status: String, error: String?)
         fun onStateChange(state: State)
 
+        /** Человекочитаемое сообщение о состоянии связи (для чата). */
+        fun onMessage(line: String) {}
+
         /** Запланировано переподключение через указанное число секунд. */
         fun onReconnectIn(seconds: Long) {}
     }
@@ -44,18 +52,31 @@ class BackendConnection(
     private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "shigusdream-connection").apply { isDaemon = true }
     }
+    private val probeClient: HttpClient = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(10))
+        .build()
     private var client: WsClient? = null
-    private val state = java.util.concurrent.atomic.AtomicReference(State.DISCONNECTED)
+    private val state = AtomicReference(State.DISCONNECTED)
     private val reconnectAttempt = AtomicLong(0)
     private var reconnectTask: ScheduledFuture<*>? = null
     private var pingTask: ScheduledFuture<*>? = null
+
+    /** Инкрементится при каждой попытке connect(); устаревшие колбэки проб игнорируются. */
+    private val connectGeneration = AtomicLong(0)
+
     @Volatile
     private var manualClose = false
+
     @Volatile
     var handler: Handler? = null
 
     val currentState: State get() = state.get()
     val isOnline: Boolean get() = state.get() == State.ONLINE
+
+    /** wss://host/ws -> https://host/health — для пробуждения «спящего» бесплатного Render. */
+    private val healthUrl: String = wsUrl.removeSuffix("/ws").let {
+        (if (it.startsWith("wss://")) "https://" + it.removePrefix("wss://") else "http://" + it.removePrefix("ws://")) + "/health"
+    }
 
     // ------------------------------------------------------------------ lifecycle
 
@@ -64,6 +85,65 @@ class BackendConnection(
         manualClose = false
         if (state.get() != State.DISCONNECTED) return
         setState(State.CONNECTING)
+        val generation = connectGeneration.incrementAndGet()
+
+        handler?.onMessage("Проверяем backend (бесплатный Render может просыпаться до минуты)...")
+
+        val request = HttpRequest.newBuilder(URI.create(healthUrl))
+            .timeout(Duration.ofSeconds(75))
+            .GET()
+            .build()
+        probeClient.sendAsync(request, HttpResponse.BodyHandlers.discarding())
+            .orTimeout(80, TimeUnit.SECONDS)
+            .whenComplete { response, error ->
+                if (generation != connectGeneration.get() || manualClose || state.get() != State.CONNECTING) {
+                    return@whenComplete
+                }
+                when {
+                    error != null -> {
+                        ShigusDream.LOGGER.info("health probe failed: {}", error.toString())
+                        handler?.onMessage("Backend недоступен (${error.javaClass.simpleName}) — попробуем ещё раз")
+                        onLostConnection()
+                    }
+
+                    response.statusCode() / 100 != 2 -> {
+                        ShigusDream.LOGGER.info("backend ещё просыпается: HTTP {}", response.statusCode())
+                        handler?.onMessage("Backend просыпается (HTTP ${response.statusCode()}) — ждём...")
+                        onLostConnection()
+                    }
+
+                    else -> {
+                        ShigusDream.LOGGER.info("backend отвечает, открываем WebSocket")
+                        openWebSocket()
+                    }
+                }
+            }
+    }
+
+    @Synchronized
+    fun disconnect() {
+        manualClose = true
+        connectGeneration.incrementAndGet()
+        cancelTasks()
+        client?.close()
+        client = null
+        setState(State.DISCONNECTED)
+    }
+
+    /** Переподключиться принудительно (кнопка J / смена настроек). */
+    @Synchronized
+    fun reconnect() {
+        manualClose = true
+        connectGeneration.incrementAndGet()
+        cancelTasks()
+        client?.close()
+        client = null
+        setState(State.DISCONNECTED)
+        reconnectAttempt.set(0)
+        connect()
+    }
+
+    private fun openWebSocket() {
         val ws = WsClient(wsUrl, object : WsClient.Listener {
             override fun onOpen() {
                 setState(State.AUTHENTICATING)
@@ -71,6 +151,7 @@ class BackendConnection(
             }
 
             override fun onText(message: String) = handleIncoming(message)
+
             override fun onClosed(code: Int, reason: String) {
                 ShigusDream.LOGGER.info("ws закрыт: code={} reason={}", code, reason)
                 onLostConnection()
@@ -85,31 +166,10 @@ class BackendConnection(
         ws.connect()
     }
 
-    @Synchronized
-    fun disconnect() {
-        manualClose = true
-        cancelTasks()
-        client?.close()
-        client = null
-        setState(State.DISCONNECTED)
-    }
-
-    /** Переподключиться принудительно (кнопка J / смена настроек). */
-    @Synchronized
-    fun reconnect() {
-        manualClose = true
-        cancelTasks()
-        client?.close()
-        client = null
-        setState(State.DISCONNECTED)
-        reconnectAttempt.set(0)
-        connect()
-    }
-
     private fun onLostConnection() {
         if (manualClose) return
         pingTask?.cancel(false)
-        setState(State.CONNECTING)
+        setState(State.DISCONNECTED)
         scheduleReconnect()
     }
 
@@ -139,10 +199,7 @@ class BackendConnection(
     // ------------------------------------------------------------------ incoming
 
     private fun handleIncoming(text: String) {
-        val env = Envelope.fromJson(text) ?: run {
-            // protocol mismatch / malformed — сервер закроет соединение при несовпадении версии сам.
-            return
-        }
+        val env = Envelope.fromJson(text) ?: return
         when (env.messageType) {
             Msg.AUTH_PENDING -> {
                 setState(State.AUTHENTICATING)

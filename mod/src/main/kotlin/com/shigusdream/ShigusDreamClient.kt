@@ -193,6 +193,10 @@ object ShigusDreamClient : ClientModInitializer {
             chatFeedback("§7[Shigu's Dream] $lastResultText")
         }
 
+        override fun onMessage(line: String) {
+            chatFeedback("§7[Shigu's Dream] $line")
+        }
+
         override fun onReconnectIn(seconds: Long) {
             val note = if (seconds >= 30) " (сервер мог уснуть — просыпается до минуты)" else ""
             chatFeedback("§7[Shigu's Dream] Переподключение через ${seconds}с$note")

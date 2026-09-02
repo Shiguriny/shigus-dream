@@ -7,6 +7,7 @@ import java.net.http.WebSocket
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -36,7 +37,7 @@ class WsClient(
     fun connect() {
         closedByUs = false
         fragmentBuffer.setLength(0)
-        http.newWebSocketBuilder()
+        val future = http.newWebSocketBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .buildAsync(URI.create(url), object : WebSocket.Listener {
                 override fun onOpen(webSocket: WebSocket) {
@@ -70,6 +71,12 @@ class WsClient(
                         listener.onError(error)
                     }
             })
+        // Сторожевой таймер: если рукопожатие не завершилось за 30 с — считаем соединение потерянным.
+        future.orTimeout(30, TimeUnit.SECONDS).whenComplete { _, error ->
+            if (error != null) {
+                listener.onError(error)
+            }
+        }
     }
 
     fun send(text: String): Boolean {
