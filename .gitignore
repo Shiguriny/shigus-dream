@@ -19,3 +19,6 @@ config/shigusdream/tokens.json
 
 # Скачанные jar-зависимости в дистрибутиве (берутся из Modrinth, см. dist/)
 dist/mods/*.jar
+# Loom dev-??????? 
+logs/ 
+run/
