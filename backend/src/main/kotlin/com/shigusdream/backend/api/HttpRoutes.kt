@@ -30,7 +30,11 @@ import kotlinx.serialization.json.JsonObject
 import java.util.UUID
 
 @Serializable
-data class AuthLinkRequest(@SerialName("mc_uuid") val mcUuid: String? = null, @SerialName("mc_name") val mcName: String? = null)
+data class AuthLinkRequest(
+    @SerialName("mc_uuid") val mcUuid: String? = null,
+    @SerialName("mc_name") val mcName: String? = null,
+    @SerialName("recovery_secret") val recoverySecret: String? = null,
+)
 
 @Serializable
 data class RefreshRequest(@SerialName("refresh_token") val refreshToken: String? = null)
@@ -75,6 +79,7 @@ class HttpRoutes(
     private val linkCodeService: LinkCodeService,
     private val commandService: CommandService,
     private val wsManager: WsManager,
+    private val recoverySecret: String? = null,
 ) {
     fun register(route: Route) = with(route) {
         post("/auth/link") { handleAuthLink(call) }
@@ -117,8 +122,20 @@ class HttpRoutes(
             call.respondError(HttpStatusCode.BadRequest, "invalid_arguments", "mc_name обязателен (до 16 символов)")
             return
         }
-        if (users.byMcUuid(uuid) != null) {
-            call.respondError(HttpStatusCode.Conflict, ErrorCode.UUID_ALREADY_LINKED, "UUID уже привязан к аккаунту; используйте refresh-токен")
+        val boundUser = users.byMcUuid(uuid)
+        if (boundUser != null) {
+            // UUID уже привязан: обычным путём отказ, с верным recovery-секретом — код восстановления.
+            val force = recoverySecret != null && body.recoverySecret == recoverySecret
+            if (!force) {
+                call.respondError(
+                    HttpStatusCode.Conflict,
+                    ErrorCode.UUID_ALREADY_LINKED,
+                    "UUID уже привязан к аккаунту '${boundUser.username}'. Для восстановления задайте SHIGU_RECOVERY_SECRET и пришлите его в recovery_secret",
+                )
+                return
+            }
+            val code = linkCodeService.createCode(uuid, name, force = true)
+            call.respondJson("""{"link_code":"$code","expires_in":${TokenService.LINK_CODE_TTL_SECONDS},"confirm_url":"/link","force":true}""")
             return
         }
         val code = linkCodeService.createCode(uuid, name)

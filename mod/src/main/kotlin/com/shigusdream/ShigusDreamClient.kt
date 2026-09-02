@@ -146,7 +146,7 @@ object ShigusDreamClient : ClientModInitializer {
                     chatFeedback("§c[Shigu's Dream]§7 Не удалось получить UUID профиля")
                     return@Thread
                 }
-                when (val outcome = auth.requestLinkCode(mcUuid, mcName)) {
+                when (val outcome = auth.requestLinkCode(mcUuid, mcName, config.recoverySecret)) {
                     is AuthManager.LinkOutcome.CodeIssued -> {
                         chatFeedback("§b[Shigu's Dream]§7 Код привязки: §e${outcome.code}§7 — откройте §9${outcome.confirmUrl}§7 и введите его (действует 15 минут)")
                         connection.sendAuthWithLinkCode(outcome.code)

@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS link_codes (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL
 );
+-- Миграция для существующих БД: коды восстановления (перепривязка уже привязанного UUID).
+ALTER TABLE link_codes ADD COLUMN IF NOT EXISTS is_force BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Команды (по ТЗ + request_id для дедупликации и mode для immediate/queued).
 CREATE TABLE IF NOT EXISTS commands (

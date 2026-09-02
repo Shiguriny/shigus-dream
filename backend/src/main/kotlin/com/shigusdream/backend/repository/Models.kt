@@ -22,6 +22,8 @@ data class LinkCode(
     var userId: UUID?,
     val createdAt: Instant,
     val expiresAt: Instant,
+    /** Код восстановления: перепривязывает уже привязанный UUID к его существующему аккаунту. */
+    val isForce: Boolean = false,
 ) {
     val isExpired: Boolean get() = Instant.now().isAfter(expiresAt)
     val isPending: Boolean get() = status == "pending" && !isExpired

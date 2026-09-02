@@ -96,6 +96,7 @@ fun Application.module(ctx: AppContext) {
         HttpRoutes(
             ctx.users, ctx.linkCodes, ctx.tokenService, ctx.permissions,
             ctx.linkCodeService, ctx.commandService, ctx.wsManager,
+            recoverySecret = ctx.config.recoverySecret,
         ).register(this)
 
         webSocket("/ws") {
@@ -110,9 +111,10 @@ fun main() {
     val ctx = buildContext(config)
 
     log.info(
-        "Shigu's Dream backend starting: port={} storage={}",
+        "Shigu's Dream backend starting: port={} storage={} recovery={}",
         config.port,
         if (config.storage == AppConfig.Storage.POSTGRES) "postgres" else "memory",
+        if (config.recoverySecret != null) "enabled" else "disabled",
     )
 
     val server = embeddedServer(Netty, port = config.port, host = "0.0.0.0") {

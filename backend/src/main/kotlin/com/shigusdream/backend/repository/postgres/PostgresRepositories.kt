@@ -138,7 +138,7 @@ class PostgresUserRepository(private val db: Db) : UserRepository {
 
 class PostgresLinkCodeRepository(private val db: Db) : LinkCodeRepository {
 
-    override fun create(mcUuid: UUID, mcName: String, code: String, ttlSeconds: Long): LinkCode {
+    override fun create(mcUuid: UUID, mcName: String, code: String, ttlSeconds: Long, isForce: Boolean): LinkCode {
         val link = LinkCode(
             code = code,
             mcUuid = mcUuid,
@@ -147,17 +147,19 @@ class PostgresLinkCodeRepository(private val db: Db) : LinkCodeRepository {
             userId = null,
             createdAt = Instant.now(),
             expiresAt = Instant.now().plusSeconds(ttlSeconds),
+            isForce = isForce,
         )
         db.withConnection { conn ->
             conn.prepareStatement(
-                "INSERT INTO link_codes (code, mc_uuid, mc_name, status, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO link_codes (code, mc_uuid, mc_name, status, is_force, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             ).use { st ->
                 st.setString(1, link.code)
                 st.setObject(2, link.mcUuid)
                 st.setString(3, link.mcName)
                 st.setString(4, link.status)
-                st.setTimestamp(5, Timestamp.from(link.createdAt))
-                st.setTimestamp(6, Timestamp.from(link.expiresAt))
+                st.setBoolean(5, link.isForce)
+                st.setTimestamp(6, Timestamp.from(link.createdAt))
+                st.setTimestamp(7, Timestamp.from(link.expiresAt))
                 st.executeUpdate()
             }
         }
@@ -165,7 +167,7 @@ class PostgresLinkCodeRepository(private val db: Db) : LinkCodeRepository {
     }
 
     override fun byCode(code: String): LinkCode? = db.withConnection { conn ->
-        conn.prepareStatement("SELECT code, mc_uuid, mc_name, status, user_id, created_at, expires_at FROM link_codes WHERE code = ?").use { st ->
+        conn.prepareStatement("SELECT code, mc_uuid, mc_name, status, user_id, is_force, created_at, expires_at FROM link_codes WHERE code = ?").use { st ->
             st.setString(1, code)
             st.executeQuery().use { rs ->
                 if (!rs.next()) return@use null
@@ -177,6 +179,7 @@ class PostgresLinkCodeRepository(private val db: Db) : LinkCodeRepository {
                     userId = rs.uuid("user_id"),
                     createdAt = rs.instant("created_at") ?: Instant.now(),
                     expiresAt = rs.instant("expires_at") ?: Instant.now(),
+                    isForce = rs.getBoolean("is_force"),
                 )
             }
         }

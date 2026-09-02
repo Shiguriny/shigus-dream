@@ -23,10 +23,13 @@ class LinkCodeService(
         data class Failed(val code: String, val message: String) : ConfirmResult
     }
 
-    /** Создаёт одноразовый код для привязки UUID. */
-    fun createCode(mcUuid: UUID, mcName: String): String {
+    /**
+     * Создаёт одноразовый код для привязки UUID.
+     * force=true — код восстановления: перепривязывает уже привязанный UUID к его существующему аккаунту.
+     */
+    fun createCode(mcUuid: UUID, mcName: String, force: Boolean = false): String {
         val code = generateCode()
-        linkCodes.create(mcUuid, mcName, code, TokenService.LINK_CODE_TTL_SECONDS)
+        linkCodes.create(mcUuid, mcName, code, TokenService.LINK_CODE_TTL_SECONDS, force)
         return code
     }
 
@@ -48,11 +51,23 @@ class LinkCodeService(
             return ConfirmResult.Failed("expired_link_code", "Код истёк, запросите новый в игре")
         }
 
-        users.byMcUuid(link.mcUuid)?.let { existing ->
-            return ConfirmResult.Failed(
-                "uuid_already_linked",
-                "Этот Minecraft UUID уже привязан к аккаунту '${existing.username}'",
-            )
+        if (link.isForce) {
+            // Код восстановления: перепривязываем UUID к его существующему аккаунту (роль сохраняется).
+            val existingUser = users.byMcUuid(link.mcUuid)
+            if (existingUser != null) {
+                link.status = "confirmed"
+                link.userId = existingUser.id
+                linkCodes.save(link)
+                return ConfirmResult.Ok(existingUser.id)
+            }
+            // UUID внезапно свободен — обычная привязка ниже.
+        } else {
+            users.byMcUuid(link.mcUuid)?.let { existing ->
+                return ConfirmResult.Failed(
+                    "uuid_already_linked",
+                    "Этот Minecraft UUID уже привязан к аккаунту '${existing.username}'",
+                )
+            }
         }
 
         val user = users.byUsername(username) ?: run {

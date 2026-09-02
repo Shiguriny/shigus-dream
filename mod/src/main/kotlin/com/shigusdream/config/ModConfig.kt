@@ -13,6 +13,8 @@ data class ModConfig(
     /** Открывать админ-панель только держа предмет с custom_data shigusdream:{type:control_item,id:admin_wand}. */
     val requireAdminWand: Boolean = false,
     val pingIntervalSeconds: Int = 20,
+    /** Секрет восстановления привязки (SHIGU_RECOVERY_SECRET на backend) — нужен только при потере токенов. */
+    val recoverySecret: String = "",
 ) {
     companion object {
         private val GSON: Gson = GsonBuilder().setPrettyPrinting().create()

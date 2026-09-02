@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS link_codes (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     expires_at TIMESTAMPTZ NOT NULL
 );
+ALTER TABLE link_codes ADD COLUMN IF NOT EXISTS is_force BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Команды (по ТЗ + request_id для дедупликации и mode для immediate/queued).
 CREATE TABLE IF NOT EXISTS commands (

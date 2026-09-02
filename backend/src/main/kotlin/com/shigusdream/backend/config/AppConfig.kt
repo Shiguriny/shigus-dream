@@ -12,6 +12,8 @@ data class AppConfig(
     val dbUser: String?,
     val dbPassword: String?,
     val jwtSecret: String,
+    /** Секрет канала восстановления привязки (перепривязка уже связанного UUID). null = восстановление выключено. */
+    val recoverySecret: String?,
 ) {
     enum class Storage { MEMORY, POSTGRES }
 
@@ -34,6 +36,7 @@ data class AppConfig(
                 dbUser = user,
                 dbPassword = password,
                 jwtSecret = System.getenv("SHIGU_JWT_SECRET") ?: "dev-insecure-secret-change-me",
+                recoverySecret = System.getenv("SHIGU_RECOVERY_SECRET")?.takeIf { it.isNotBlank() },
             )
         }
 

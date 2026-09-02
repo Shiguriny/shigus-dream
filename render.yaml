@@ -19,6 +19,9 @@ services:
           property: connectionString
       - key: SHIGU_JWT_SECRET
         generateValue: true
+      # Секрет канала восстановления привязки (посмотрите/задайте его в Dashboard -> Environment).
+      - key: SHIGU_RECOVERY_SECRET
+        generateValue: true
 
 databases:
   - name: shigusdream-db

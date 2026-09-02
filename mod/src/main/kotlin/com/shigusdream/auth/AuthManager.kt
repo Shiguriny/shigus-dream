@@ -67,11 +67,18 @@ class AuthManager(private val configDir: Path, private val baseUrl: String) {
     /**
      * Первый шаг привязки: просим backend выдать одноразовый код для этого UUID.
      * Код пользователь подтверждает на странице backend, после чего WS-auth завершится.
+     * Если UUID уже привязан, а токены потеряны — нужен recoverySecret (см. ModConfig).
      */
-    fun requestLinkCode(mcUuid: String, mcName: String): LinkOutcome {
+    fun requestLinkCode(mcUuid: String, mcName: String, recoverySecret: String = ""): LinkOutcome {
         if (hasRefreshToken) return LinkOutcome.AlreadyLinked(tokens.refreshToken)
         return try {
-            val body = gson.toJson(mapOf("mc_uuid" to mcUuid, "mc_name" to mcName))
+            val body = gson.toJson(
+                mapOf(
+                    "mc_uuid" to mcUuid,
+                    "mc_name" to mcName,
+                    "recovery_secret" to recoverySecret.takeIf { it.isNotBlank() },
+                ),
+            )
             val request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl.trimEnd('/') + "/auth/link"))
                 .timeout(Duration.ofSeconds(10))
@@ -88,7 +95,9 @@ class AuthManager(private val configDir: Path, private val baseUrl: String) {
                     )
                 }
 
-                409 -> LinkOutcome.Failed("Этот UUID уже привязан к аккаунту. Обратитесь к администратору.")
+                409 -> LinkOutcome.Failed(
+                    "UUID уже привязан, а токены потеряны. Впишите SHIGU_RECOVERY_SECRET из панели Render в config/shigusdream.json (recoverySecret) и перезапустите игру",
+                )
 
                 else -> LinkOutcome.Failed("backend вернул ${response.statusCode()}: ${response.body().take(200)}")
             }

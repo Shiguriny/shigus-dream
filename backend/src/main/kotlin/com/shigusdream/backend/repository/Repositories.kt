@@ -16,7 +16,7 @@ interface UserRepository {
 }
 
 interface LinkCodeRepository {
-    fun create(mcUuid: UUID, mcName: String, code: String, ttlSeconds: Long): LinkCode
+    fun create(mcUuid: UUID, mcName: String, code: String, ttlSeconds: Long, isForce: Boolean = false): LinkCode
     fun byCode(code: String): LinkCode?
     fun save(link: LinkCode)
 }

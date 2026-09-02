@@ -58,7 +58,7 @@ class InMemoryUserRepository : UserRepository {
 class InMemoryLinkCodeRepository : LinkCodeRepository {
     private val byCode = ConcurrentHashMap<String, LinkCode>()
 
-    override fun create(mcUuid: UUID, mcName: String, code: String, ttlSeconds: Long): LinkCode {
+    override fun create(mcUuid: UUID, mcName: String, code: String, ttlSeconds: Long, isForce: Boolean): LinkCode {
         val link = LinkCode(
             code = code,
             mcUuid = mcUuid,
@@ -67,6 +67,7 @@ class InMemoryLinkCodeRepository : LinkCodeRepository {
             userId = null,
             createdAt = Instant.now(),
             expiresAt = Instant.now().plusSeconds(ttlSeconds),
+            isForce = isForce,
         )
         byCode[code] = link
         purgeExpired()
