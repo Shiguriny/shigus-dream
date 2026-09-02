@@ -1,6 +1,7 @@
 # Gradle
 .gradle/
 build/
+run/
 
 # IDE
 .idea/
@@ -15,3 +16,6 @@ build/
 # Логи и локальные секреты
 *.log
 config/shigusdream/tokens.json
+
+# Скачанные jar-зависимости в дистрибутиве (берутся из Modrinth, см. dist/)
+dist/mods/*.jar
