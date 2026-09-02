@@ -22,7 +22,9 @@ object HudElements {
                     com.shigusdream.network.BackendConnection.State.DISCONNECTED -> "§cOffline"
                     else -> "§eConnecting"
                 }
-                g.text(Minecraft.getInstance().font, "§d[Shigu's Dream] $state", 4, 4, 0xFFFFFF)
+                val version = net.fabricmc.loader.api.FabricLoader.getInstance()
+                    .getModContainer(ShigusDream.MOD_ID).orElse(null)?.metadata?.version?.friendlyString ?: "?"
+                g.text(Minecraft.getInstance().font, "§d[Shigu's Dream v$version] $state", 4, 4, 0xFFFFFF)
             }
             MessageOverlay.render(g)
         }
