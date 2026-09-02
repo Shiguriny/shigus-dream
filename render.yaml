@@ -1,0 +1,27 @@
+# Render.com Blueprint: backend + PostgreSQL одним деплоем.
+# В Render: New -> Blueprint -> укажите репозиторий с этим файлом в корне.
+services:
+  - type: web
+    name: shigusdream-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SHIGU_STORAGE
+        value: postgres
+      - key: SHIGU_PORT
+        value: "8080"
+      - key: SHIGU_DATABASE_URL
+        fromDatabase:
+          name: shigusdream-db
+          property: connectionString
+      - key: SHIGU_JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: shigusdream-db
+    databaseName: shigusdream
+    user: shigu
+    plan: free

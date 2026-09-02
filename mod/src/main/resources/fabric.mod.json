@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "shigusdream",
+  "version": "${version}",
+  "name": "Shigu's Dream",
+  "description": "Client control system: authorized clients can trigger whitelisted local actions (messages, notifications, sounds) on other modded clients via a backend gateway. The Minecraft server stays untouched.",
+  "authors": [
+    "Shigu"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/shigusdream/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.shigusdream.ShigusDreamClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "fabric-api": "*",
+    "fabric-language-kotlin": ">=1.13.13+kotlin.2.4.10",
+    "minecraft": "~26.1.2",
+    "java": ">=25"
+  }
+}

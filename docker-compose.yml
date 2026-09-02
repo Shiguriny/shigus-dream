@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: shigusdream
+      POSTGRES_USER: shigu
+      POSTGRES_PASSWORD: shigu
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shigu -d shigusdream"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      SHIGU_PORT: "8080"
+      SHIGU_STORAGE: postgres
+      SHIGU_DB_JDBC: jdbc:postgresql://postgres:5432/shigusdream
+      SHIGU_DB_USER: shigu
+      SHIGU_DB_PASSWORD: shigu
+      # В продакшене задайте длинный случайный секрет!
+      SHIGU_JWT_SECRET: ${SHIGU_JWT_SECRET:-change-me-to-a-long-random-secret}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

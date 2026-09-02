@@ -1,0 +1,43 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '2.4.10'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '2.4.10'
+    id 'application'
+}
+
+group = 'com.shigusdream'
+version = '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "io.ktor:ktor-server-core:3.5.2"
+    implementation "io.ktor:ktor-server-netty:3.5.2"
+    implementation "io.ktor:ktor-server-websockets:3.5.2"
+    implementation "io.ktor:ktor-server-content-negotiation:3.5.2"
+    implementation "io.ktor:ktor-serialization-kotlinx-json:3.5.2"
+    implementation "io.ktor:ktor-server-call-logging:3.5.2"
+    implementation "io.ktor:ktor-server-status-pages:3.5.2"
+
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0"
+    implementation "com.auth0:java-jwt:4.6.0"
+    implementation "com.zaxxer:HikariCP:7.1.0"
+    implementation "org.postgresql:postgresql:42.7.13"
+    implementation "ch.qos.logback:logback-classic:1.6.3"
+
+    testImplementation 'org.jetbrains.kotlin:kotlin-test'
+}
+
+application {
+    mainClass = 'com.shigusdream.backend.ApplicationKt'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+kotlin {
+    jvmToolchain(25)
+}
