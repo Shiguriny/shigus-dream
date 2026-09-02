@@ -15,6 +15,7 @@ import com.shigusdream.minecraft.CustomDataReader
 import com.shigusdream.network.BackendConnection
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.KeyMapping
@@ -80,10 +81,18 @@ object ShigusDreamClient : ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register { client -> onEndTick(client) }
         HudElements.register()
 
-        ShigusDream.LOGGER.info("Shigu's Dream инициализирован; backend={}", config.backendUrl)
-        if (config.autoConnect) {
-            connection.connect()
+        // Подключаемся при заходе в мир/на сервер — код привязки и статусы не теряются в меню,
+        // а presence означает «игрок сейчас в игре». Выход из мира — разрыв соединения.
+        ClientPlayConnectionEvents.JOIN.register { _, _, _ ->
+            if (config.autoConnect && connection.currentState == BackendConnection.State.DISCONNECTED) {
+                connection.connect()
+            }
         }
+        ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
+            connection.disconnect()
+        }
+
+        ShigusDream.LOGGER.info("Shigu's Dream v{} инициализирован; backend={}", modVersion(), config.backendUrl)
     }
 
     // ------------------------------------------------------------------ tick
@@ -202,6 +211,10 @@ object ShigusDreamClient : ClientModInitializer {
             client.gui.chat.addClientSystemMessage(Component.literal(message))
         }
     }
+
+    fun modVersion(): String =
+        net.fabricmc.loader.api.FabricLoader.getInstance()
+            .getModContainer(ShigusDream.MOD_ID).orElse(null)?.metadata?.version?.friendlyString ?: "?"
 }
 
 /** Runtime-состояние, доступное из экранов и колбэков. */
