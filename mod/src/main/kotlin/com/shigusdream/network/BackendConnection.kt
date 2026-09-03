@@ -40,6 +40,9 @@ class BackendConnection(
         fun onActionResult(requestId: String, action: String, status: String, error: String?)
         fun onStateChange(state: State)
 
+        /** Роль текущего аккаунта изменена на лету (владельцем). */
+        fun onRoleUpdate(newRole: String) {}
+
         /** Человекочитаемое сообщение о состоянии связи (для чата). */
         fun onMessage(line: String) {}
 
@@ -264,6 +267,11 @@ class BackendConnection(
             }
 
             Msg.PONG -> {} // только маркер живости
+
+            Msg.ROLE_UPDATE -> {
+                val newRole = env.payload.get("role")?.asString ?: return
+                handler?.onRoleUpdate(newRole)
+            }
         }
     }
 

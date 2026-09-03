@@ -36,7 +36,7 @@ async def main():
         if not cond: ok = False
 
     # 1. обычная привязка (uuid1 -> admin_boss, первый аккаунт = admin)
-    s, b = post_json("/auth/link", {"mc_uuid": "aaaa1111-1111-1111-1111-111111111111", "mc_name": "P1"})
+    s, b = post_json("/auth/link", {"mc_uuid": "dddd5555-1111-1111-1111-111111111111", "mc_name": "P1"})
     code = b["link_code"]
     async with websockets.connect(WS) as ws:
         await ws.send(json.dumps({"protocol_version":1,"message_type":"auth","payload":{"link_code":code}}))
@@ -47,11 +47,11 @@ async def main():
     # WS закрыт, токены "потеряны" (не сохранены)
 
     # 2. повторный /auth/link без секрета -> 409
-    s, b = post_json("/auth/link", {"mc_uuid": "aaaa1111-1111-1111-1111-111111111111", "mc_name": "P1"})
+    s, b = post_json("/auth/link", {"mc_uuid": "dddd5555-1111-1111-1111-111111111111", "mc_name": "P1"})
     check("привязанный UUID без секрета -> 409", s == 409, (s, b))
 
     # 3. force-код с верным секретом -> перепривязка к существующему аккаунту (роль admin сохранена)
-    s, b = post_json("/auth/link", {"mc_uuid": "aaaa1111-1111-1111-1111-111111111111", "mc_name": "P1",
+    s, b = post_json("/auth/link", {"mc_uuid": "dddd5555-1111-1111-1111-111111111111", "mc_name": "P1",
                                     "recovery_secret": "test-recovery-123"})
     check("force /auth/link -> 200", s == 200 and b.get("force") is True, (s, b))
     code2 = b["link_code"]
@@ -65,7 +65,7 @@ async def main():
               e["payload"]["user"])
 
     # 4. force-код с неверным секретом -> 409
-    s, b = post_json("/auth/link", {"mc_uuid": "aaaa1111-1111-1111-1111-111111111111", "mc_name": "P1",
+    s, b = post_json("/auth/link", {"mc_uuid": "dddd5555-1111-1111-1111-111111111111", "mc_name": "P1",
                                     "recovery_secret": "wrong"})
     check("неверный секрет -> 409", s == 409, (s, b))
 

@@ -57,12 +57,19 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
 
     private var soundBox: EditBox? = null
     private var soundSuggestions: List<String> = emptyList()
+    private var soundPreviewRect: Pair<Int, Int>? = null
 
     private var editor: MiniMessageEditor? = null
     private var textField: EditBox? = null
 
     private var mouseX = 0.0
     private var mouseY = 0.0
+
+    /** Виджеты, скрываемые при открытом выпадающем списке (иначе рисуются поверх списка). */
+    private fun setFieldsVisible(visible: Boolean) {
+        fieldWidgets.forEach { (_, widget) -> widget.visible = visible }
+        editor?.setWidgetsVisible(visible)
+    }
 
     override fun init() {
         val users = ShigusDreamRuntime.presenceUsers
@@ -201,14 +208,27 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
 
         editor?.let { if (it.handleHexClick(mx, my)) return true }
 
-        // Автодополнение звука
+        // Превью звука: ▶ справа от поля sound
+        soundPreviewRect?.let { (rx, ry) ->
+            if (mx in rx..(rx + 14) && my in ry..(ry + 16)) {
+                val value = soundBox?.getValue()?.trim()
+                if (!value.isNullOrBlank()) {
+                    com.shigusdream.client.SoundPlayback.play(value, 0.6f, 1.0f)
+                }
+                return true
+            }
+        }
+
+        // Автодополнение звука: клик по строке подставляет значение и проигрывает превью.
         val sb = soundBox
         if (sb != null && soundSuggestions.isNotEmpty()) {
             val listY = sb.y + 16
             val listBottom = listY + soundSuggestions.size * ROW
             if (mx in LEFT..(LEFT + W) && my >= listY && my < listBottom) {
                 val idx = ((my - listY) / ROW).coerceIn(0, soundSuggestions.size - 1)
-                sb.setValue(soundSuggestions[idx])
+                val picked = soundSuggestions[idx]
+                sb.setValue(picked)
+                com.shigusdream.client.SoundPlayback.play(picked, 0.4f, 1.0f)
                 soundSuggestions = emptyList()
                 return true
             }
@@ -231,13 +251,16 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
                 }
             }
             openDropdown = Dropdown.NONE
+            setFieldsVisible(true)
             return true
         }
         if (inTarget) {
+            setFieldsVisible(false)
             openDropdown = Dropdown.TARGET
             return true
         }
         if (inAction) {
+            setFieldsVisible(false)
             openDropdown = Dropdown.ACTION
             return true
         }
@@ -295,6 +318,17 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
                 label.append(Component.literal(" *").withStyle { it.withColor(TextColor.fromRgb(0xFFFF5555.toInt())) })
             }
             g.text(font, label, LEFT, y, C_FIELD)
+            // Кнопка ▶ превью для поля sound
+            if (field.key == "sound" && soundBox != null) {
+                val rx = LEFT + W + 4
+                val ry = y + 10
+                soundPreviewRect = rx to ry
+                val hovered = mouseX >= rx && mouseX <= rx + 14 && mouseY >= ry && mouseY <= ry + 16
+                g.fill(rx, ry, rx + 14, ry + 16, if (hovered) 0xFF3A3A55.toInt() else 0xFF22223A.toInt())
+                g.text(font, Component.literal("▶"), rx + 3, ry + 4, 0xFF55FF55.toInt())
+            } else {
+                soundPreviewRect = null
+            }
             y += 34
         }
 

@@ -54,6 +54,10 @@ object ShigusDreamClient : ClientModInitializer {
     val isAdminOrOwner: Boolean get() = myRole == "admin" || myRole == "owner"
     val isOwner: Boolean get() = myRole == "owner"
 
+    fun updateRole(newRole: String) {
+        myRole = newRole
+    }
+
     private lateinit var openAdminKey: KeyMapping
     private lateinit var statusKey: KeyMapping
 
@@ -215,7 +219,12 @@ object ShigusDreamClient : ClientModInitializer {
         }
 
         override fun onPresence(users: List<BackendConnection.PresenceUser>) {
-            ShigusDreamRuntime.presenceUsers = users
+            ShigusDreamRuntime.onPresence(users)
+        }
+
+        override fun onRoleUpdate(newRole: String) {
+            updateRole(newRole)
+            chatFeedback("§b[Shigu's Dream]§7 Ваша роль изменена: §f$newRole§7. Доступ к панели: ${if (newRole == "admin" || newRole == "owner") "есть" else "нет"}")
         }
 
         override fun onAuthSuccess(username: String?, refreshToken: String?, accessToken: String?, role: String?) {
@@ -276,4 +285,22 @@ object ShigusDreamClient : ClientModInitializer {
 object ShigusDreamRuntime {
     var dispatcher: ActionDispatcher? = null
     var presenceUsers: List<BackendConnection.PresenceUser> = emptyList()
+    private val knownUsernames = HashSet<String>()
+    private var presenceInitialized = false
+
+    /** Diff нового presence-снапшота: уведомляет админов о новых участниках и заходах в сеть. */
+    fun onPresence(users: List<BackendConnection.PresenceUser>) {
+        presenceUsers = users
+        if (!ShigusDreamClient.isAdminOrOwner) return
+        for (user in users) {
+            if (user.username !in knownUsernames) {
+                if (presenceInitialized) {
+                    // Появился в снапшоте впервые после старта — либо новичок, либо вернулся.
+                    ShigusDreamClient.chatFeedback("§b[Shigu's Dream]§7 В сети мода: §f${user.username}")
+                }
+                knownUsernames += user.username
+            }
+        }
+        presenceInitialized = true
+    }
 }

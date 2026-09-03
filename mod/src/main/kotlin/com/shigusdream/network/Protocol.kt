@@ -13,6 +13,7 @@ object Msg {
     const val AUTH_SUCCESS = "auth.success"
     const val AUTH_ERROR = "auth.error"
     const val PRESENCE_LIST = "presence.list"
+    const val ROLE_UPDATE = "role.update"
     const val ACTION_EXECUTE = "action.execute"
     const val ACTION_RESULT = "action.result"
     const val ACTION_ERROR = "action.error"

@@ -223,6 +223,8 @@ class HttpRoutes(
             return
         }
         users.setRole(user, role)
+        // Права применяются онлайн-цели сразу, без переподключения.
+        wsManager.notifyRoleChange(user.id, role)
         call.respondJson("""{"status":"ok","username":"${user.username}","role":"${user.role}"}""")
     }
 

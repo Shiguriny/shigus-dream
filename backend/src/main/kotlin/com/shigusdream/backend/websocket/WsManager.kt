@@ -24,6 +24,8 @@ import com.shigusdream.backend.repository.User
 import com.shigusdream.backend.repository.UserRepository
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -198,6 +200,18 @@ class WsManager(
         val session = awaitingConfirmation.remove(code) ?: return
         val user = users.byId(userId) ?: return
         login(session, user)
+    }
+
+    /** Push-обновление роли онлайн-пользователю: права применяются без переподключения. */
+    suspend fun notifyRoleChange(userId: UUID, newRole: String) {
+        val user = users.byId(userId) ?: return
+        val session = sessions[userId] ?: return
+        val payload = buildJsonObject {
+            put("role", newRole)
+        }
+        session.send(Envelope(messageType = MessageType.ROLE_UPDATE, payload = payload))
+        log.info("role update pushed user={} role={}", user.username, newRole)
+        broadcastPresence()
     }
 
     suspend fun login(session: ClientSession, user: User) {

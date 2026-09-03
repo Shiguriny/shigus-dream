@@ -9,11 +9,11 @@ import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.TextColor
 
 /**
- * Интерактивный MiniMessage-эдитор для поля text действия show_message:
- * палитра 16 цветов, стили B/I/U/S/O, hex-поле, живой предпросмотр.
- * Виджеты добавляются/удаляются через колбэки хост-экрана (protected API Screen).
+ * Мини-эдитор MiniMessage для поля text: цветовой круг HSV, стили B/I/U/S/O,
+ * hex-поле и живой предпросмотр. Виджеты регистрируются через колбэки экрана.
  */
 class MiniMessageEditor(
     private val target: EditBox,
@@ -24,24 +24,20 @@ class MiniMessageEditor(
     private val remover: (AbstractWidget) -> Unit,
 ) {
     companion object {
-        val PALETTE = listOf(
-            "black" to 0x000000, "dark_blue" to 0x0000AA, "dark_green" to 0x00AA00, "dark_aqua" to 0x00AAAA,
-            "dark_red" to 0xAA0000, "dark_purple" to 0xAA00AA, "gold" to 0xFFAA00, "gray" to 0xAAAAAA,
-            "dark_gray" to 0x555555, "blue" to 0x5555FF, "green" to 0x55FF55, "aqua" to 0x55FFFF,
-            "red" to 0xFF5555, "light_purple" to 0xFF55FF, "yellow" to 0xFFFF55, "white" to 0xFFFFFF,
-        )
         val STYLE_BUTTONS = listOf(
             "B" to "bold", "I" to "italic", "U" to "underlined", "S" to "strikethrough", "O" to "obfuscated",
         )
-        private const val SWATCH = 16
-        private const val GAP = 2
+        private const val WHEEL = 64
     }
 
     private val font: Font get() = Minecraft.getInstance().font
 
+    // Раскладка: слева круг, справа от него hex + стили, ниже — предпросмотр.
+    private val wheel = ColorWheel(x, y + 12, WHEEL) { rgb -> wrap("<#%06X>".format(rgb), "</#%06X>".format(rgb)) }
+
     private val hexBox = EditBox(
         font,
-        x + width - 70, y + 2, 68, 14,
+        x + WHEEL + 10, y + 12, 62, 14,
         Component.literal("hex"),
     ).apply {
         setMaxLength(7)
@@ -49,33 +45,28 @@ class MiniMessageEditor(
         setHint(Component.literal("#RRGGBB"))
     }
 
-    private var buttons = listOf<EditorButton>()
+    private val styleY = y + 12 + 18
+
+    private val buttons: List<EditorButton> = STYLE_BUTTONS.mapIndexed { idx, (label, tag) ->
+        EditorButton(x + WHEEL + 10 + idx * 20, styleY, 18, 14, label) { wrap("<$tag>", "</$tag>") }
+    } + EditorButton(x + WHEEL + 10 + STYLE_BUTTONS.size * 20, styleY, 18, 14, "↺") { wrap("<reset>", "") }
 
     fun initWidgets() {
-        // Палитра: 8 сватчей в ряд.
-        var i = 0
-        val swatches = mutableListOf<EditorButton>()
-        for ((name, color) in PALETTE) {
-            val col = i % 8
-            val row = i / 8
-            swatches += EditorButton(
-                x + col * (SWATCH + GAP), y + 2 + row * (SWATCH + GAP), SWATCH, SWATCH,
-                "", color,
-            ) { wrap("<$name>", "</$name>") }
-            i++
-        }
-        // Стилевые кнопки под палитрой.
-        val styleY = y + 2 + 2 * (SWATCH + GAP) + 4
-        buttons = swatches + STYLE_BUTTONS.mapIndexed { idx, (label, tag) ->
-            EditorButton(x + idx * 20, styleY, 18, 14, label, null) { wrap("<$tag>", "</$tag>") }
-        } + EditorButton(x + STYLE_BUTTONS.size * 20, styleY, 18, 14, "↺", null) { wrap("<reset>", "") }
+        adder(wheel)
         adder(hexBox)
         buttons.forEach { adder(it) }
     }
 
     fun removeWidgets() {
+        remover(wheel)
         remover(hexBox)
         buttons.forEach { remover(it) }
+    }
+
+    fun setWidgetsVisible(visible: Boolean) {
+        wheel.visible = visible
+        hexBox.visible = visible
+        buttons.forEach { it.visible = visible }
     }
 
     private fun wrap(open: String, close: String) {
@@ -94,14 +85,16 @@ class MiniMessageEditor(
     }
 
     fun render(g: GuiGraphicsExtractor, mouseX: Double, mouseY: Double) {
-        g.text(font, Component.literal("Formatting"), x, y - 10, 0xFFA0A0B0.toInt())
-        // Кнопка применения hex слева от поля
-        val applyX = hexBox.x - 16
+        g.text(font, Component.literal("Formatting"), x, y, 0xFFA0A0B0.toInt())
+        g.text(font, Component.literal("Hex"), x + WHEEL + 10, y + 2, 0xFFA0A0B0.toInt())
+
+        // Кнопка применения hex справа от поля
+        val applyX = hexBox.x + hexBox.width + 2
         val hovered = mouseX >= applyX && mouseX <= applyX + 14 && mouseY >= hexBox.y && mouseY <= hexBox.y + hexBox.height
         g.fill(applyX, hexBox.y, applyX + 14, hexBox.y + hexBox.height, if (hovered) 0xFF3A3A55.toInt() else 0xFF22223A.toInt())
         g.text(font, Component.literal("✔"), applyX + 3, hexBox.y + 3, 0xFF55FF55.toInt())
-        // Предпросмотр
-        val previewY = y + 84
+
+        val previewY = y + 12 + WHEEL + 8
         g.text(font, Component.literal("Preview"), x, previewY, 0xFFA0A0B0.toInt())
         val preview = MiniText.parse(target.getValue().ifBlank { " " })
         var px = x
@@ -118,7 +111,7 @@ class MiniMessageEditor(
     }
 
     fun handleHexClick(mx: Int, my: Int): Boolean {
-        val applyX = hexBox.x - 16
+        val applyX = hexBox.x + hexBox.width + 2
         if (mx in applyX..(applyX + 14) && my in hexBox.y..(hexBox.y + hexBox.height)) {
             applyHex()
             return true
@@ -126,11 +119,10 @@ class MiniMessageEditor(
         return false
     }
 
-    /** Компактная кнопка эдитора: цветной сватч или текстовая. */
+    /** Компактная текстовая кнопка стиля. */
     private inner class EditorButton(
         bx: Int, by: Int, bw: Int, bh: Int,
         label: String,
-        private val swatchColor: Int?,
         private val action: () -> Unit,
     ) : AbstractWidget(bx, by, bw, bh, Component.literal(label)) {
 
@@ -138,17 +130,13 @@ class MiniMessageEditor(
             val border = if (isHovered) 0xFFB088FF.toInt() else 0xFF4A4A6A.toInt()
             g.fill(x, y, x + width, y + height, border)
             val inset = if (isHovered) 1 else 2
-            if (swatchColor != null) {
-                g.fill(x + inset, y + inset, x + width - inset, y + height - inset, 0xFF000000.toInt() or swatchColor)
-            } else {
-                g.fill(x + inset, y + inset, x + width - inset, y + height - inset, 0xFF22223A.toInt())
-                g.text(
-                    font, message,
-                    x + (width - font.width(message)) / 2,
-                    y + (height - 8) / 2,
-                    0xFFFFFFFF.toInt(),
-                )
-            }
+            g.fill(x + inset, y + inset, x + width - inset, y + height - inset, 0xFF22223A.toInt())
+            g.text(
+                font, message,
+                x + (width - font.width(message)) / 2,
+                y + (height - 8) / 2,
+                0xFFFFFFFF.toInt(),
+            )
         }
 
         override fun updateWidgetNarration(narration: NarrationElementOutput) {}
