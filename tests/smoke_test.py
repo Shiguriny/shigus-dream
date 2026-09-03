@@ -16,8 +16,8 @@ import urllib.parse
 
 import websockets
 
-BASE = "http://127.0.0.1:8080"
-WS = "ws://127.0.0.1:8080/ws"
+BASE = "http://127.0.0.1:8090"
+WS = "ws://127.0.0.1:8090/ws"
 
 PASSED = 0
 FAILED = []
@@ -119,7 +119,7 @@ async def main():
     tok_admin, refresh_admin, user_admin = await link_and_connect(
         ws_admin, "11111111-1111-1111-1111-111111111111", "AdminPlayer", "admin_boss",
     )
-    check("admin auth.success + роль admin", user_admin.get("role") == "admin", str(user_admin))
+    check("admin auth.success + роль owner", user_admin.get("role") == "owner", str(user_admin))
 
     ws_target = await websockets.connect(WS)
     tok_target, refresh_target, user_target = await link_and_connect(

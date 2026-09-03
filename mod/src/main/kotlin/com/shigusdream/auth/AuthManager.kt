@@ -106,5 +106,25 @@ class AuthManager(internal val configDir: Path, internal val baseUrl: String) {
         }
     }
 
+    /** Авторизованный вызов admin-API. Возвращает (status, body); status = -1 при сетевой ошибке, -2 если нет токена. */
+    fun adminApi(method: String, path: String, body: String? = null): Pair<Int, String?> {
+        val token = tokens.accessToken ?: return -2 to null
+        return try {
+            val builder = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl.trimEnd('/') + path))
+                .timeout(Duration.ofSeconds(10))
+                .header("Authorization", "Bearer $token")
+            if (body != null) {
+                builder.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body))
+            } else {
+                builder.GET()
+            }
+            val response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
+            response.statusCode() to response.body()
+        } catch (e: Exception) {
+            -1 to (e.message ?: e.javaClass.simpleName)
+        }
+    }
+
     private fun tokensFile(): Path = configDir.resolve("tokens.json")
 }

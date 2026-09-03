@@ -11,7 +11,11 @@ data class User(
     val createdAt: Instant,
     val permissions: MutableSet<String> = mutableSetOf(),
 ) {
-    val isAdmin: Boolean get() = role == "admin"
+    /** Полный доступ к действиям и панели (admin и owner). */
+    val isAdmin: Boolean get() = role == "admin" || role == "owner"
+
+    /** Управление ролями других пользователей. */
+    val isOwner: Boolean get() = role == "owner"
 }
 
 data class LinkCode(

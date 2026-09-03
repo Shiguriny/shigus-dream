@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS link_codes (
 -- Миграция для существующих БД: коды восстановления (перепривязка уже привязанного UUID).
 ALTER TABLE link_codes ADD COLUMN IF NOT EXISTS is_force BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Миграция 0.3.0: первый admin (если owner ещё нет) становится владельцем.
+UPDATE users SET role = 'owner'
+WHERE role = 'admin'
+  AND NOT EXISTS (SELECT 1 FROM users WHERE role = 'owner')
+  AND created_at = (SELECT MIN(created_at) FROM users WHERE role = 'admin');
+
 -- Команды (по ТЗ + request_id для дедупликации и mode для immediate/queued).
 CREATE TABLE IF NOT EXISTS commands (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

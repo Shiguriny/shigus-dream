@@ -35,7 +35,7 @@ class BackendConnection(
         /** Вызывается на сетевом/WS-потоке. */
         fun onActionExecute(requestId: String, action: String, args: JsonObject, commandId: String?)
         fun onPresence(users: List<PresenceUser>)
-        fun onAuthSuccess(username: String?, refreshToken: String?, accessToken: String?)
+        fun onAuthSuccess(username: String?, refreshToken: String?, accessToken: String?, role: String?)
         fun onAuthError(code: String, message: String)
         fun onActionResult(requestId: String, action: String, status: String, error: String?)
         fun onStateChange(state: State)
@@ -211,8 +211,10 @@ class BackendConnection(
                 setState(State.ONLINE)
                 val refreshToken = env.payload.get("refresh_token")?.takeIf { !it.isJsonNull }?.asString
                 val accessToken = env.payload.get("access_token")?.takeIf { !it.isJsonNull }?.asString
-                val username = env.payload.getAsJsonObject("user")?.get("username")?.asString
-                handler?.onAuthSuccess(username, refreshToken, accessToken)
+                val user = env.payload.getAsJsonObject("user")
+                val username = user?.get("username")?.asString
+                val role = user?.get("role")?.asString
+                handler?.onAuthSuccess(username, refreshToken, accessToken, role)
                 startPing()
             }
 

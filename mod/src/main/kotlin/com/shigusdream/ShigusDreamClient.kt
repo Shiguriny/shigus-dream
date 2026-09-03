@@ -46,6 +46,14 @@ object ShigusDreamClient : ClientModInitializer {
     @Volatile
     var lastResultText: String = ""
 
+    /** Роль текущего аккаунта (owner/admin/user) из auth.success. */
+    @Volatile
+    var myRole: String? = null
+        private set
+
+    val isAdminOrOwner: Boolean get() = myRole == "admin" || myRole == "owner"
+    val isOwner: Boolean get() = myRole == "owner"
+
     private lateinit var openAdminKey: KeyMapping
     private lateinit var statusKey: KeyMapping
 
@@ -62,6 +70,7 @@ object ShigusDreamClient : ClientModInitializer {
         registry.register(SetFovAction)
         registry.register(SendChatAction)
         LinkCommand.register()
+        RoleCommand.register()
 
         connection = BackendConnection(
             wsUrl = ModConfig.websocketUrl(config.backendUrl),
@@ -114,6 +123,10 @@ object ShigusDreamClient : ClientModInitializer {
             }
             if (!connection.isOnline) {
                 chatFeedback("§c[Shigu's Dream]§7 Нет подключения к backend (переподключение — клавиша J)")
+                continue
+            }
+            if (!isAdminOrOwner) {
+                chatFeedback("§c[Shigu's Dream]§7 Панель доступна только администраторам (ваша роль: ${myRole ?: "нет"})")
                 continue
             }
             connection.requestPresence()
@@ -205,9 +218,10 @@ object ShigusDreamClient : ClientModInitializer {
             ShigusDreamRuntime.presenceUsers = users
         }
 
-        override fun onAuthSuccess(username: String?, refreshToken: String?, accessToken: String?) {
+        override fun onAuthSuccess(username: String?, refreshToken: String?, accessToken: String?, role: String?) {
             auth.saveTokens(refreshToken ?: auth.tokens.refreshToken, accessToken, username)
-            chatFeedback("§a[Shigu's Dream]§7 Подключено как $username")
+            myRole = role
+            chatFeedback("§a[Shigu's Dream]§7 Подключено как $username ($role)")
         }
 
         override fun onAuthError(code: String, message: String) {

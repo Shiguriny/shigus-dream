@@ -203,8 +203,16 @@ class HttpRoutes(
     }
 
     private suspend fun handleUserRole(call: ApplicationCall) {
-        if (call.authorizedAdmin() == null) return
+        val caller = call.authorizedAdmin() ?: return
+        if (!caller.isOwner) {
+            call.respondError(HttpStatusCode.Forbidden, ErrorCode.NO_PERMISSION, "Управлять ролями может только владелец (owner)")
+            return
+        }
         val user = call.routeUser() ?: return
+        if (user.id == caller.id) {
+            call.respondError(HttpStatusCode.BadRequest, "invalid_arguments", "Нельзя менять собственную роль")
+            return
+        }
         val role = try {
             json.decodeFromString(RoleRequest.serializer(), call.receiveText()).role
         } catch (_: Exception) {
@@ -215,7 +223,7 @@ class HttpRoutes(
             return
         }
         users.setRole(user, role)
-        call.respondJson("""{"status":"ok"}""")
+        call.respondJson("""{"status":"ok","username":"${user.username}","role":"${user.role}"}""")
     }
 
     private suspend fun handlePermissionAdd(call: ApplicationCall) {

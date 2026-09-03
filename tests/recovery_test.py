@@ -43,7 +43,7 @@ async def main():
         await recv_until(ws, {"auth.pending"})
         post_form("/link", {"code": code, "username": "admin_boss"})
         e = await recv_until(ws, {"auth.success"})
-        check("первичная привязка -> admin", e["payload"]["user"]["role"] == "admin")
+        check("первичная привязка -> owner", e["payload"]["user"]["role"] == "owner")
     # WS закрыт, токены "потеряны" (не сохранены)
 
     # 2. повторный /auth/link без секрета -> 409
@@ -60,8 +60,8 @@ async def main():
         await recv_until(ws, {"auth.pending"})
         post_form("/link", {"code": code2, "username": "whatever_name"})
         e = await recv_until(ws, {"auth.success"})
-        check("восстановление -> тот же аккаунт admin_boss (роль admin)",
-              e["payload"]["user"]["username"] == "admin_boss" and e["payload"]["user"]["role"] == "admin",
+        check("восстановление -> тот же аккаунт (роль owner)",
+              e["payload"]["user"]["username"] == "admin_boss" and e["payload"]["user"]["role"] == "owner",
               e["payload"]["user"])
 
     # 4. force-код с неверным секретом -> 409

@@ -71,7 +71,8 @@ class LinkCodeService(
         }
 
         val user = users.byUsername(username) ?: run {
-            val role = if (users.count() == 0L) "admin" else "user"
+            // Первый созданный аккаунт — владелец (owner), он управляет ролями остальных.
+            val role = if (users.count() == 0L) "owner" else "user"
             users.create(username, role, null)
         }
 
