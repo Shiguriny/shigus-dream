@@ -29,6 +29,7 @@ object HudElements {
                     .append(Component.literal(stateText).withStyle { it.withColor(TextColor.fromRgb(stateColor)) })
                 g.text(Minecraft.getInstance().font, line, 4, 4, -1) // цвет задан стилями компонента
             }
+            com.shigusdream.client.ScreenFx.render(g)
             MessageOverlay.render(g)
         }
     }

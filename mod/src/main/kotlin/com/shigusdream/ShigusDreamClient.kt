@@ -4,6 +4,7 @@ import com.google.gson.JsonObject
 import com.shigusdream.actions.ActionDispatcher
 import com.shigusdream.actions.ActionRegistry
 import com.shigusdream.actions.impl.ApplyEffectAction
+import com.shigusdream.actions.impl.ApplyFilterAction
 import com.shigusdream.actions.impl.FreezeControlsAction
 import com.shigusdream.actions.impl.NotificationAction
 import com.shigusdream.actions.impl.PlaySoundAction
@@ -83,6 +84,7 @@ object ShigusDreamClient : ClientModInitializer {
         registry.register(SendChatAction)
         registry.register(SetSlotAction)
         registry.register(FreezeControlsAction)
+        registry.register(ApplyFilterAction)
         LinkCommand.register()
         RoleCommand.register()
 
@@ -163,6 +165,7 @@ object ShigusDreamClient : ClientModInitializer {
         MessageOverlay.tick()
         com.shigusdream.client.ClientEffects.tick()
         com.shigusdream.client.ClientControls.tick(client)
+        com.shigusdream.client.ScreenFx.tick(client)
         com.shigusdream.admin.ScenarioRunner.tick()
     }
 

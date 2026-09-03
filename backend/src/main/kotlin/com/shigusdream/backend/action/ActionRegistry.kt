@@ -144,6 +144,25 @@ object ActionRegistry {
                 ),
             ),
         ),
+        ActionSpec(
+            id = "shigusdream:apply_filter",
+            name = "Apply Filter",
+            description = "Экранный пост-эффект: grayscale, blur, invert, spider_vision, vignette, vhs, noise, darkening, sleepy, color_filter, damaged_vision.",
+            permission = "client.action.apply_filter",
+            schema = listOf(
+                SchemaField(
+                    key = "effect", type = "string", required = true,
+                    allowedValues = listOf(
+                        "grayscale", "blur", "invert", "spider_vision", "vignette", "vhs", "noise",
+                        "darkening", "sleepy", "color_filter", "damaged_vision",
+                    ),
+                    description = "Экранный эффект",
+                ),
+                SchemaField(key = "duration", type = "int", min = 20.0, max = 1200.0, description = "Тики (20/с)"),
+                SchemaField(key = "intensity", type = "float", min = 0.1, max = 1.0, description = "Интенсивность (для HUD-эффектов)"),
+                SchemaField(key = "color", type = "string", maxLength = 7, description = "Цвет для color_filter, #RRGGBB"),
+            ),
+        ),
     )
 
     private val byId = ACTIONS.associateBy { it.id }

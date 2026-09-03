@@ -11,6 +11,7 @@
   "license": "MIT",
   "icon": "assets/shigusdream/icon.png",
   "environment": "client",
+  "accessWidener": "shigusdream.accesswidener",
   "entrypoints": {
     "client": [
       { "adapter": "kotlin", "value": "com.shigusdream.ShigusDreamClient" }

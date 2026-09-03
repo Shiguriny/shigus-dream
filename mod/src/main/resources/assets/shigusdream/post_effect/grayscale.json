@@ -1,0 +1,25 @@
+{
+    "targets": {},
+    "passes": [
+        {
+            "vertex_shader": "minecraft:core/screenquad",
+            "fragment_shader": "shigusdream:post/grayscale",
+            "inputs": [
+                {
+                    "sampler_name": "In",
+                    "target": "minecraft:main"
+                }
+            ],
+            "uniforms": {
+                "GrayConfig": [
+                    {
+                        "name": "Amount",
+                        "type": "float",
+                        "value": 1.0
+                    }
+                ]
+            },
+            "output": "minecraft:main"
+        }
+    ]
+}

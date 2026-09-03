@@ -1,0 +1,25 @@
+{
+    "targets": {},
+    "passes": [
+        {
+            "vertex_shader": "minecraft:core/screenquad",
+            "fragment_shader": "shigusdream:post/vignette",
+            "inputs": [
+                {
+                    "sampler_name": "In",
+                    "target": "minecraft:main"
+                }
+            ],
+            "uniforms": {
+                "VignetteConfig": [
+                    {
+                        "name": "Strength",
+                        "type": "float",
+                        "value": 1.0
+                    }
+                ]
+            },
+            "output": "minecraft:main"
+        }
+    ]
+}

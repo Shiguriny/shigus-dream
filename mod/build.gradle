@@ -3,11 +3,15 @@ plugins {
     id 'net.fabricmc.fabric-loom' version '1.17.20'
 }
 
-version = '0.4.1'
+version = '0.4.2'
 group = 'com.shigusdream'
 
 base {
     archivesName = 'shigusdream'
+}
+
+loom {
+    accessWidenerPath = file('src/main/resources/shigusdream.accesswidener')
 }
 
 repositories {
