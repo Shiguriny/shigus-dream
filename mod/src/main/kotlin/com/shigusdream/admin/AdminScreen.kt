@@ -16,11 +16,14 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.MutableComponent
+import net.minecraft.network.chat.TextColor
 
 /**
  * Admin Panel: меню прижато к левому краю, справа сверху — версия мода.
- * Target — выпадающий список со статусами игроков; поля ввода со подсказками;
+ * Target — выпадающий список со статусами игроков; поля ввода с подсказками;
  * для звука — автодополнение по реестру.
+ * Весь кастомный текст рисуется Component-перегрузками (ваниль-паттерн 26.x).
  */
 class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font, Component.literal("Shigu's Dream — Admin Panel")) {
 
@@ -31,14 +34,27 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         const val DD_Y = 34
         const val DD_H = 20
         const val MAX_SUGGESTIONS = 8
+        const val C_LABEL = 0xA0A0B0
+        const val C_FIELD = 0xC8C8D8
+        const val C_WHITE = 0xFFFFFF
+        const val C_DIM = 0x909090
+        const val C_ACCENT = 0xFF7C5CFF.toInt()
+        const val C_BG_BOX = 0xFF2A2A44.toInt()
+        const val C_BG_HOVER = 0xFF3A3A55.toInt()
+        const val C_BG_HOVER2 = 0xFF3A3A66.toInt()
+        const val C_BG_LIST = 0xF0101020.toInt()
+        const val C_BG_SUGGEST = 0xF0080818.toInt()
+        const val C_PURPLE = 0xB088FF
+        const val C_YELLOW = 0xFFFFD76E.toInt()
     }
 
     private var selectedTarget: String = ""
     private var selectedAction: ClientAction? = null
     private val fieldValues = LinkedHashMap<String, String>()
     private val fieldWidgets = mutableListOf<Pair<SchemaField, EditBox>>()
-    private val fieldY = HashMap<String, Int>()
     private var statusLine: String = ""
+
+    private var versionComponent: MutableComponent = Component.empty()
 
     // Выпадающий список таргетов
     private var dropdownOpen = false
@@ -55,6 +71,8 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         selectedTarget = selectedTarget.takeIf { t -> users.any { it.username == t } }
             ?: users.firstOrNull()?.username
             ?: "(нет данных)"
+
+        versionComponent = Component.literal("[Shigu's Dream v${ShigusDreamClient.modVersion()}]")
 
         val actions = ShigusDreamClient.registry.all()
         if (selectedAction == null || selectedAction !in actions) selectedAction = actions.first()
@@ -86,7 +104,6 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
     private fun rebuildArgumentFields() {
         fieldWidgets.forEach { (_, widget) -> removeWidget(widget) }
         fieldWidgets.clear()
-        fieldY.clear()
         soundBox = null
         soundSuggestions = emptyList()
         buildArgumentFields(selectedAction ?: return)
@@ -105,7 +122,6 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
             }
             addRenderableWidget(widget)
             fieldWidgets += field to widget
-            fieldY[field.key] = y
             y += 34
         }
     }
@@ -136,7 +152,7 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
                 FieldType.INT -> {
                     val v = raw.toIntOrNull()
                     if (v == null) {
-                        statusLine = "§c'${field.key}' должен быть целым числом"
+                        statusLine = "'${field.key}' должен быть целым числом"
                         return
                     }
                     args.addProperty(field.key, v)
@@ -145,7 +161,7 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
                 FieldType.FLOAT -> {
                     val v = raw.toFloatOrNull()
                     if (v == null) {
-                        statusLine = "§c'${field.key}' должен быть числом"
+                        statusLine = "'${field.key}' должен быть числом"
                         return
                     }
                     args.addProperty(field.key, v)
@@ -153,7 +169,7 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
 
                 FieldType.BOOL -> {
                     if (raw != "true" && raw != "false") {
-                        statusLine = "§c'${field.key}' должен быть true/false"
+                        statusLine = "'${field.key}' должен быть true/false"
                         return
                     }
                     args.addProperty(field.key, raw.toBoolean())
@@ -166,16 +182,16 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         val action = selectedAction ?: return
         val errors = ActionValidator.validate(action.schema, args)
         if (errors.isNotEmpty()) {
-            statusLine = "§c" + errors.joinToString("; ")
+            statusLine = errors.joinToString("; ")
             return
         }
 
         if (selectedTarget == "(нет данных)") {
-            statusLine = "§cНет данных presence — переподключитесь (J)"
+            statusLine = "Нет данных presence — переподключитесь (J)"
             return
         }
 
-        statusLine = "§7Отправка..."
+        statusLine = "Отправка..."
         ShigusDreamClient.connection.sendExecute(selectedTarget, action.id, args)
     }
 
@@ -223,13 +239,22 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
     }
 
     override fun mouseScrolled(x: Double, y: Double, xDelta: Double, yDelta: Double): Boolean {
-        // Прокрутка в открытом списке таргетов просто закрывает его, чтобы не мешать виджетам.
         if (dropdownOpen) {
             dropdownOpen = false
             return true
         }
         return super.mouseScrolled(x, y, xDelta, yDelta)
     }
+
+    // ------------------------------------------------------------------ components for custom text
+
+    private fun statusLabel(online: Boolean): MutableComponent =
+        Component.literal("● ").withStyle { it.withColor(TextColor.fromRgb(if (online) 0x55FF55 else 0x707070)) }
+
+    private fun targetLabel(username: String, online: Boolean): MutableComponent =
+        statusLabel(online).append(Component.literal(username).withStyle { it.withColor(TextColor.fromRgb(C_WHITE)) })
+
+    private fun stripLegacy(text: String): String = text.replace(Regex("§."), "")
 
     // ------------------------------------------------------------------ render
 
@@ -238,14 +263,13 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         this.mouseX = mouseX.toDouble()
         this.mouseY = mouseY.toDouble()
 
-        // Заголовки
-        g.text(font, "Target", LEFT, 22, 0xA0A0B0)
-        g.text(font, "Action", LEFT, 62, 0xA0A0B0)
-        g.text(font, "Arguments", LEFT, 100, 0xA0A0B0)
+        // Заголовки секций
+        g.text(font, Component.literal("Target"), LEFT, 22, C_LABEL)
+        g.text(font, Component.literal("Action"), LEFT, 62, C_LABEL)
+        g.text(font, Component.literal("Arguments"), LEFT, 100, C_LABEL)
 
         // Версия справа сверху
-        val versionLine = "[Shigu's Dream v${ShigusDreamClient.modVersion()}]"
-        g.text(font, versionLine, width - font.width(versionLine) - 4, 6, 0xB088FF)
+        g.text(font, versionComponent, width - font.width(versionComponent) - 4, 6, C_PURPLE)
 
         // Поле таргета (кнопка выпадающего списка)
         drawDropdownButton(g)
@@ -258,8 +282,11 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         // Подписи полей аргументов
         var y = 112
         for ((field, _) in fieldWidgets) {
-            val required = if (field.required) " §7*" else ""
-            g.text(font, "${field.key} (${field.type.wireName})$required", LEFT, y, 0xC8C8D8)
+            val label = Component.literal("${field.key} (${field.type.wireName})")
+            if (field.required) {
+                label.append(Component.literal(" *").withStyle { it.withColor(TextColor.fromRgb(0xFF5555)) })
+            }
+            g.text(font, label, LEFT, y, C_FIELD)
             y += 34
         }
 
@@ -271,62 +298,69 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
 
         // Нижние строки
         val online = ShigusDreamRuntime.presenceUsers.count { it.online }
-        g.text(font, "Онлайн: $online | Соединение: ${ShigusDreamClient.connection.currentState}", LEFT, height - 68, 0x909090)
+        g.text(
+            font,
+            Component.literal("Онлайн: $online | Соединение: ${ShigusDreamClient.connection.currentState}"),
+            LEFT, height - 68, C_DIM,
+        )
         if (statusLine.isNotBlank()) {
-            g.text(font, Component.literal(statusLine), LEFT, height - 82, 0xFFFFFF)
+            g.text(font, Component.literal(stripLegacy(statusLine)), LEFT, height - 82, C_WHITE)
         }
     }
 
-    private fun statusDot(online: Boolean): String = if (online) "§a●" else "§7○"
-
     private fun drawDropdownButton(g: GuiGraphicsExtractor) {
         val hovered = mouseX >= LEFT && mouseX <= LEFT + W && mouseY >= DD_Y && mouseY <= DD_Y + DD_H
-        g.fill(LEFT, DD_Y, LEFT + W, DD_Y + DD_H, if (hovered) 0xFF3A3A55.toInt() else 0xFF2A2A44.toInt())
-        g.fill(LEFT, DD_Y, LEFT + 1, DD_Y + DD_H, 0xFF7C5CFF.toInt())
+        g.fill(LEFT, DD_Y, LEFT + W, DD_Y + DD_H, if (hovered) C_BG_HOVER else C_BG_BOX)
+        g.fill(LEFT, DD_Y, LEFT + 1, DD_Y + DD_H, C_ACCENT)
         val users = ShigusDreamRuntime.presenceUsers
         val selected = users.firstOrNull { it.username == selectedTarget }
         val label = if (selectedTarget == "(нет данных)") {
-            "§7(нет данных)"
+            Component.literal("(нет данных)").withStyle { it.withColor(TextColor.fromRgb(C_DIM)) }
         } else {
-            "${statusDot(selected?.online ?: false)} §f$selectedTarget"
+            targetLabel(selectedTarget, selected?.online ?: false)
         }
-        g.text(font, label, LEFT + 6, DD_Y + 6, 0xFFFFFF)
-        g.text(font, "▼", LEFT + W - 14, DD_Y + 6, 0xA0A0B0)
+        g.text(font, label, LEFT + 6, DD_Y + 6, C_WHITE)
+        g.text(font, Component.literal("▼"), LEFT + W - 14, DD_Y + 6, C_LABEL)
     }
 
     private fun drawDropdownList(g: GuiGraphicsExtractor) {
         val users = ShigusDreamRuntime.presenceUsers
         if (users.isEmpty()) {
-            g.fill(LEFT, DD_Y + DD_H, LEFT + W, DD_Y + DD_H + ROW, 0xF0101020.toInt())
-            g.text(font, "§7(нет данных)", LEFT + 6, DD_Y + DD_H + 3, 0xFFFFFF)
+            g.fill(LEFT, DD_Y + DD_H, LEFT + W, DD_Y + DD_H + ROW, C_BG_LIST)
+            g.text(font, Component.literal("(нет данных)"), LEFT + 6, DD_Y + DD_H + 3, C_DIM)
             return
         }
         val listY = DD_Y + DD_H
         val listH = users.size * ROW
-        g.fill(LEFT, listY, LEFT + W, listY + listH, 0xF0101020.toInt())
-        g.fill(LEFT, listY, LEFT + 1, listY + listH, 0xFF7C5CFF.toInt())
+        g.fill(LEFT, listY, LEFT + W, listY + listH, C_BG_LIST)
+        g.fill(LEFT, listY, LEFT + 1, listY + listH, C_ACCENT)
 
         var y = listY
         for (user in users) {
             val hovered = mouseY >= y && mouseY < y + ROW && mouseX >= LEFT && mouseX <= LEFT + W
             if (hovered) {
-                g.fill(LEFT, y, LEFT + W, y + ROW, 0xFF3A3A66.toInt())
+                g.fill(LEFT, y, LEFT + W, y + ROW, C_BG_HOVER2)
             }
-            g.text(font, "${statusDot(user.online)} §f${user.username}", LEFT + 6, y + 3, 0xFFFFFF)
+            g.text(font, targetLabel(user.username, user.online), LEFT + 6, y + 3, C_WHITE)
             y += ROW
         }
     }
 
     private fun drawSuggestions(g: GuiGraphicsExtractor, startY: Int, suggestions: List<String>) {
         val listH = suggestions.size * ROW
-        g.fill(LEFT, startY, LEFT + W, startY + listH, 0xF0080818.toInt())
+        g.fill(LEFT, startY, LEFT + W, startY + listH, C_BG_SUGGEST)
         var y = startY
-        for ((index, suggestion) in suggestions.withIndex()) {
+        for (suggestion in suggestions) {
             val hovered = mouseY >= y && mouseY < y + ROW && mouseX >= LEFT && mouseX <= LEFT + W
             if (hovered) {
-                g.fill(LEFT, y, LEFT + W, y + ROW, 0xFF3A3A66.toInt())
+                g.fill(LEFT, y, LEFT + W, y + ROW, C_BG_HOVER2)
             }
-            g.text(font, suggestion, LEFT + 6, y + 3, if (hovered) 0xFFFFD76E.toInt() else 0xC8C8D8)
+            g.text(
+                font,
+                Component.literal(suggestion),
+                LEFT + 6, y + 3,
+                if (hovered) C_YELLOW else C_FIELD,
+            )
             y += ROW
         }
     }
