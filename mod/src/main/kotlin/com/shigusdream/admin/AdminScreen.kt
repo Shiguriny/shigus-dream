@@ -304,13 +304,6 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         val action = selectedAction
         drawDropdownHeader(g, DD_ACTION_Y, Component.literal(action?.displayName ?: ""), false)
 
-        if (openDropdown == Dropdown.TARGET) {
-            drawTargetList(g)
-        }
-        if (openDropdown == Dropdown.ACTION) {
-            drawActionList(g)
-        }
-
         var y = 118
         for ((field, _) in fieldWidgets) {
             val label = Component.literal("${field.key} (${field.type.wireName})")
@@ -326,8 +319,6 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
                 val hovered = mouseX >= rx && mouseX <= rx + 14 && mouseY >= ry && mouseY <= ry + 16
                 g.fill(rx, ry, rx + 14, ry + 16, if (hovered) 0xFF3A3A55.toInt() else 0xFF22223A.toInt())
                 g.text(font, Component.literal("▶"), rx + 3, ry + 4, 0xFF55FF55.toInt())
-            } else {
-                soundPreviewRect = null
             }
             y += 34
         }
@@ -347,6 +338,14 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         )
         if (statusLine.isNotBlank()) {
             g.text(font, Component.literal(stripLegacy(statusLine)), LEFT, height - 82, C_WHITE)
+        }
+
+        // Выпадающие списки — самыми последними, чтобы перекрывать любые подписи и панели
+        if (openDropdown == Dropdown.TARGET) {
+            drawTargetList(g)
+        }
+        if (openDropdown == Dropdown.ACTION) {
+            drawActionList(g)
         }
     }
 
