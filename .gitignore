@@ -22,3 +22,7 @@ dist/mods/*.jar
 # Loom dev-??????? 
 logs/ 
 run/
+
+# Локальные файлы рассылки и генерации
+dist/
+gen_icon.py

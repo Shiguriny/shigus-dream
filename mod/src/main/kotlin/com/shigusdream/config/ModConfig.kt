@@ -36,6 +36,15 @@ data class ModConfig(
             }
         }
 
+        fun save(configDir: Path, config: ModConfig) {
+            try {
+                Files.createDirectories(configDir)
+                Files.writeString(configDir.resolve("shigusdream.json"), GSON.toJson(config))
+            } catch (e: Exception) {
+                com.shigusdream.ShigusDream.LOGGER.warn("Не удалось сохранить shigusdream.json", e)
+            }
+        }
+
         /** Базовый URL → адрес WebSocket (/ws). */
         fun websocketUrl(baseUrl: String): String {
             val withScheme = when {

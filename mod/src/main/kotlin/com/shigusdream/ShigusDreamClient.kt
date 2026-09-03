@@ -4,10 +4,12 @@ import com.google.gson.JsonObject
 import com.shigusdream.actions.ActionDispatcher
 import com.shigusdream.actions.ActionRegistry
 import com.shigusdream.actions.impl.ApplyEffectAction
+import com.shigusdream.actions.impl.FreezeControlsAction
 import com.shigusdream.actions.impl.NotificationAction
 import com.shigusdream.actions.impl.PlaySoundAction
 import com.shigusdream.actions.impl.SendChatAction
 import com.shigusdream.actions.impl.SetFovAction
+import com.shigusdream.actions.impl.SetSlotAction
 import com.shigusdream.actions.impl.ShowMessageAction
 import com.shigusdream.admin.AdminScreen
 import com.shigusdream.auth.AuthManager
@@ -33,6 +35,11 @@ object ShigusDreamClient : ClientModInitializer {
 
     lateinit var config: ModConfig
         private set
+
+    /** Применяет новую конфигурацию (экран настроек) и сохраняет её на диск. */
+    fun applyConfig(newConfig: ModConfig) {
+        config = newConfig
+    }
     lateinit var auth: AuthManager
         private set
     lateinit var connection: BackendConnection
@@ -73,6 +80,8 @@ object ShigusDreamClient : ClientModInitializer {
         registry.register(ApplyEffectAction)
         registry.register(SetFovAction)
         registry.register(SendChatAction)
+        registry.register(SetSlotAction)
+        registry.register(FreezeControlsAction)
         LinkCommand.register()
         RoleCommand.register()
 
@@ -152,6 +161,7 @@ object ShigusDreamClient : ClientModInitializer {
         }
         MessageOverlay.tick()
         com.shigusdream.client.ClientEffects.tick()
+        com.shigusdream.client.ClientControls.tick(client)
     }
 
     /**

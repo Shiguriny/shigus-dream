@@ -18,6 +18,12 @@ object RoleCommand {
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(
                 ClientCommands.literal("shigu")
+                    .then(ClientCommands.literal("config").executes {
+                        net.minecraft.client.Minecraft.getInstance().setScreen(
+                            com.shigusdream.config.ConfigScreen(),
+                        )
+                        1
+                    })
                     .then(ClientCommands.literal("users").executes { list(it); 1 })
                     .then(
                         ClientCommands.literal("role")

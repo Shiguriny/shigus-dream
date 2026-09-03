@@ -22,11 +22,21 @@ import java.util.concurrent.atomic.AtomicReference
  * и диспетчеризация входящих action.execute.
  */
 class BackendConnection(
-    private val wsUrl: String,
+    wsUrl: String,
     private val auth: AuthManager,
     private val pingIntervalSeconds: Int,
 ) {
     enum class State { DISCONNECTED, CONNECTING, AUTHENTICATING, ONLINE }
+
+    /** Адрес WebSocket (/ws). Может меняться из экрана настроек. */
+    @Volatile
+    var wsUrl: String = wsUrl
+        private set
+
+    /** Обновить адрес; применяется при следующем подключении. */
+    fun updateUrl(newWsUrl: String) {
+        wsUrl = newWsUrl
+    }
 
     interface Handler {
         /** WebSocket открыт — самое время аутентифицироваться. Вызывается на WS-потоке. */
@@ -77,9 +87,10 @@ class BackendConnection(
     val isOnline: Boolean get() = state.get() == State.ONLINE
 
     /** wss://host/ws -> https://host/health — для пробуждения «спящего» бесплатного Render. */
-    private val healthUrl: String = wsUrl.removeSuffix("/ws").let {
-        (if (it.startsWith("wss://")) "https://" + it.removePrefix("wss://") else "http://" + it.removePrefix("ws://")) + "/health"
-    }
+    private val healthUrl: String
+        get() = wsUrl.removeSuffix("/ws").let {
+            (if (it.startsWith("wss://")) "https://" + it.removePrefix("wss://") else "http://" + it.removePrefix("ws://")) + "/health"
+        }
 
     // ------------------------------------------------------------------ lifecycle
 

@@ -3,7 +3,7 @@ plugins {
     id 'net.fabricmc.fabric-loom' version '1.17.20'
 }
 
-version = '0.3.2'
+version = '0.4.0'
 group = 'com.shigusdream'
 
 base {
@@ -12,6 +12,7 @@ base {
 
 repositories {
     // Loom добавляет необходимые репозитории (Fabric, Mojang, Maven Central) сам.
+    maven { url = 'https://maven.terraformersmc.com/releases/' } // Mod Menu API
 }
 
 dependencies {
@@ -20,6 +21,8 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:0.19.3"
     implementation "net.fabricmc.fabric-api:fabric-api:0.155.2+26.1.2"
     implementation "net.fabricmc:fabric-language-kotlin:1.13.13+kotlin.2.4.10"
+    // Mod Menu API — только для компиляции; в рантайме опционален (entrypoint "modmenu").
+    compileOnly "com.terraformersmc:modmenu:18.0.0"
 
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:6.1.3'

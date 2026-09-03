@@ -122,6 +122,28 @@ object ActionRegistry {
                 ),
             ),
         ),
+        ActionSpec(
+            id = "shigusdream:set_slot",
+            name = "Set Slot",
+            description = "Переключает активный слот хотбара цели.",
+            permission = "client.action.set_slot",
+            schema = listOf(
+                SchemaField(key = "slot", type = "int", required = true, min = 0.0, max = 8.0, description = "Слот хотбара 0..8"),
+            ),
+        ),
+        ActionSpec(
+            id = "shigusdream:freeze_controls",
+            name = "Freeze Controls",
+            description = "На время блокирует управление целью (Esc остаётся доступен).",
+            permission = "client.action.freeze_controls",
+            schema = listOf(
+                SchemaField(key = "duration", type = "int", required = true, min = 20.0, max = 1200.0, description = "Тики (20/с)"),
+                SchemaField(
+                    key = "allowEsc", type = "bool",
+                    description = "Разрешить Esc-меню (в нём разморозка)",
+                ),
+            ),
+        ),
     )
 
     private val byId = ACTIONS.associateBy { it.id }

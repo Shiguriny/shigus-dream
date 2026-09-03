@@ -64,6 +64,8 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
 
     private var mouseX = 0.0
     private var mouseY = 0.0
+    private var settingsRect: Pair<Int, Int>? = null
+    private var settingsLabel: Component = Component.literal("⚙ Настройки")
 
     /** Виджеты, скрываемые при открытом выпадающем списке (иначе рисуются поверх списка). */
     private fun setFieldsVisible(visible: Boolean) {
@@ -208,6 +210,14 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
 
         editor?.let { if (it.handleHexClick(mx, my)) return true }
 
+        // ⚙ Настройки
+        settingsRect?.let { (rx, ry) ->
+            if (mx >= rx && mx <= rx + font.width(settingsLabel) && my >= ry && my <= ry + 12) {
+                Minecraft.getInstance().setScreen(com.shigusdream.config.ConfigScreen(this))
+                return true
+            }
+        }
+
         // Превью звука: ▶ справа от поля sound
         soundPreviewRect?.let { (rx, ry) ->
             if (mx in rx..(rx + 14) && my in ry..(ry + 16)) {
@@ -298,6 +308,13 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         g.text(font, Component.literal("Arguments"), LEFT, 106, C_LABEL)
 
         g.text(font, versionComponent, width - font.width(versionComponent) - 4, 6, C_WHITE)
+
+        // ⚙ Настройки под бейджем версии
+        val sw = font.width(settingsLabel)
+        val sx = width - sw - 4
+        settingsRect = sx to 18
+        val sHovered = mouseX >= sx && mouseX <= sx + sw && mouseY >= 18 && mouseY <= 30
+        g.text(font, settingsLabel, sx, 18, if (sHovered) C_YELLOW else C_LABEL)
 
         drawDropdownHeader(g, DD_TARGET_Y, targetLabel(selectedTarget, ShigusDreamRuntime.presenceUsers.firstOrNull { it.username == selectedTarget }?.online ?: false), selectedTarget == "(нет данных)")
 

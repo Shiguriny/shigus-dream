@@ -38,6 +38,8 @@ cd backend && gradlew.bat installDist
 
 ## Запуск backend
 
+**Публичный деплой (Render.com, Blueprint)**: репозиторий содержит `render.yaml` — в Render: New → Blueprint → выбрать репозиторий; создадутся web-сервис и бесплатная PostgreSQL, схема применится автоматически. Переменные: `SHIGU_JWT_SECRET`, `SHIGU_RECOVERY_SECRET` (генерируются), `SHIGU_DATABASE_URL` (провяжется автоматически; понимаются и `SHIGU_DB_JDBC`, и формат `postgres://`).
+
 **Режим in-memory (по умолчанию)** — данные в памяти, сбрасываются при рестарте. Ничего устанавливать не нужно:
 
 ```bat
