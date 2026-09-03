@@ -27,7 +27,7 @@ object HudElements {
                 val line = Component.literal("[Shigu's Dream v$version] ")
                     .withStyle { it.withColor(TextColor.fromRgb(0xB088FF)) }
                     .append(Component.literal(stateText).withStyle { it.withColor(TextColor.fromRgb(stateColor)) })
-                g.text(Minecraft.getInstance().font, line, 4, 4, 0xFFFFFF)
+                g.text(Minecraft.getInstance().font, line, 4, 4, -1) // цвет задан стилями компонента
             }
             MessageOverlay.render(g)
         }

@@ -34,18 +34,20 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         const val DD_Y = 34
         const val DD_H = 20
         const val MAX_SUGGESTIONS = 8
-        const val C_LABEL = 0xA0A0B0
-        const val C_FIELD = 0xC8C8D8
-        const val C_WHITE = 0xFFFFFF
-        const val C_DIM = 0x909090
+        // ВАЖНО: цвет текста — полный ARGB. RGB с нулевым альфа-байтом = полностью прозрачный текст.
+        const val C_LABEL = 0xFFA0A0B0.toInt()
+        const val C_FIELD = 0xFFC8C8D8.toInt()
+        const val C_WHITE = -1 // 0xFFFFFFFF
+        const val C_DIM = 0xFF909090.toInt()
         const val C_ACCENT = 0xFF7C5CFF.toInt()
         const val C_BG_BOX = 0xFF2A2A44.toInt()
         const val C_BG_HOVER = 0xFF3A3A55.toInt()
         const val C_BG_HOVER2 = 0xFF3A3A66.toInt()
         const val C_BG_LIST = 0xF0101020.toInt()
         const val C_BG_SUGGEST = 0xF0080818.toInt()
-        const val C_PURPLE = 0xB088FF
+        const val C_PURPLE = 0xFFB088FF.toInt()
         const val C_YELLOW = 0xFFFFD76E.toInt()
+        const val C_RED = 0xFFFF5555.toInt()
     }
 
     private var selectedTarget: String = ""
@@ -73,6 +75,7 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
             ?: "(нет данных)"
 
         versionComponent = Component.literal("[Shigu's Dream v${ShigusDreamClient.modVersion()}]")
+            .withStyle { it.withColor(TextColor.fromRgb(0xB088FF)) }
 
         val actions = ShigusDreamClient.registry.all()
         if (selectedAction == null || selectedAction !in actions) selectedAction = actions.first()
@@ -268,8 +271,8 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         g.text(font, Component.literal("Action"), LEFT, 62, C_LABEL)
         g.text(font, Component.literal("Arguments"), LEFT, 100, C_LABEL)
 
-        // Версия справа сверху
-        g.text(font, versionComponent, width - font.width(versionComponent) - 4, 6, C_PURPLE)
+        // Версия справа сверху (цвет задан стилем компонента)
+        g.text(font, versionComponent, width - font.width(versionComponent) - 4, 6, C_WHITE)
 
         // Поле таргета (кнопка выпадающего списка)
         drawDropdownButton(g)
@@ -286,7 +289,7 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
             if (field.required) {
                 label.append(Component.literal(" *").withStyle { it.withColor(TextColor.fromRgb(0xFF5555)) })
             }
-            g.text(font, label, LEFT, y, C_FIELD)
+            g.text(font, label, LEFT, y, C_WHITE)
             y += 34
         }
 
