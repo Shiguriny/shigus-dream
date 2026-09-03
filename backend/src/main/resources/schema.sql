@@ -53,5 +53,15 @@ CREATE TABLE IF NOT EXISTS commands (
     executed_at TIMESTAMPTZ
 );
 
+-- Артефакт мода для системы обновлений (хранится в БД, переживает редеплои).
+CREATE TABLE IF NOT EXISTS mod_artifact (
+    id INT PRIMARY KEY,
+    version TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    bytes BYTEA NOT NULL,
+    sha256 TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_commands_target_status ON commands (target_id, status);
 CREATE INDEX IF NOT EXISTS idx_commands_sender ON commands (sender_id);

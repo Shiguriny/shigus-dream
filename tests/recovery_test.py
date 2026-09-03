@@ -60,7 +60,7 @@ async def main():
         await recv_until(ws, {"auth.pending"})
         post_form("/link", {"code": code2, "username": "whatever_name"})
         e = await recv_until(ws, {"auth.success"})
-        check("восстановление -> тот же аккаунт (роль owner)",
+        check("восстановление -> существующий аккаунт, роль owner сохранена",
               e["payload"]["user"]["username"] == "admin_boss" and e["payload"]["user"]["role"] == "owner",
               e["payload"]["user"])
 

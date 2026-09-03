@@ -29,3 +29,11 @@ interface CommandRepository {
     fun update(command: Command)
     fun pendingForTarget(targetId: UUID): List<Command>
 }
+
+interface ModArtifactRepository {
+    /** Сохраняет артефакт (замещает предыдущий). */
+    fun save(artifact: ModArtifact)
+
+    /** Текущий артефакт или null. */
+    fun latest(): ModArtifact?
+}

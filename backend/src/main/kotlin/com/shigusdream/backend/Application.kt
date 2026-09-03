@@ -37,6 +37,7 @@ class AppContext(
     val users: UserRepository,
     val linkCodes: LinkCodeRepository,
     val commands: CommandRepository,
+    val modArtifacts: com.shigusdream.backend.repository.ModArtifactRepository,
     val tokenService: TokenService,
     val permissions: PermissionService,
     val linkCodeService: LinkCodeService,
@@ -62,6 +63,9 @@ fun buildContext(config: AppConfig): AppContext {
     val users: UserRepository = db?.let { PostgresUserRepository(it) } ?: InMemoryUserRepository()
     val linkCodes: LinkCodeRepository = db?.let { PostgresLinkCodeRepository(it) } ?: InMemoryLinkCodeRepository()
     val commands: CommandRepository = db?.let { PostgresCommandRepository(it) } ?: InMemoryCommandRepository()
+    val modArtifacts: com.shigusdream.backend.repository.ModArtifactRepository =
+        db?.let { com.shigusdream.backend.repository.postgres.PostgresModArtifactRepository(it) }
+            ?: com.shigusdream.backend.repository.memory.InMemoryModArtifactRepository()
 
     val tokenService = TokenService(config.jwtSecret)
     val pgUsers = users as? PostgresUserRepository
@@ -72,7 +76,7 @@ fun buildContext(config: AppConfig): AppContext {
     val commandService = CommandService(users, commands, permissions)
     val wsManager = WsManager(users, linkCodes, tokenService, linkCodeService, permissions, commandService)
 
-    return AppContext(config, users, linkCodes, commands, tokenService, permissions, linkCodeService, commandService, wsManager, db)
+    return AppContext(config, users, linkCodes, commands, modArtifacts, tokenService, permissions, linkCodeService, commandService, wsManager, db)
 }
 
 fun Application.module(ctx: AppContext) {
@@ -97,6 +101,7 @@ fun Application.module(ctx: AppContext) {
             ctx.users, ctx.linkCodes, ctx.tokenService, ctx.permissions,
             ctx.linkCodeService, ctx.commandService, ctx.wsManager,
             recoverySecret = ctx.config.recoverySecret,
+            modArtifacts = ctx.modArtifacts,
         ).register(this)
 
         webSocket("/ws") {

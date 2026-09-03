@@ -197,6 +197,40 @@ class PostgresLinkCodeRepository(private val db: Db) : LinkCodeRepository {
     }
 }
 
+class PostgresModArtifactRepository(private val db: Db) : com.shigusdream.backend.repository.ModArtifactRepository {
+
+    override fun save(artifact: com.shigusdream.backend.repository.ModArtifact) {
+        db.withConnection { conn ->
+            conn.prepareStatement(
+                "INSERT INTO mod_artifact (id, version, filename, bytes, sha256, created_at) VALUES (1, ?, ?, ?, ?, now()) " +
+                    "ON CONFLICT (id) DO UPDATE SET version = EXCLUDED.version, filename = EXCLUDED.filename, " +
+                    "bytes = EXCLUDED.bytes, sha256 = EXCLUDED.sha256, created_at = now()",
+            ).use { st ->
+                st.setInt(1, 1)
+                st.setString(2, artifact.version)
+                st.setString(3, artifact.filename)
+                st.setBytes(4, artifact.bytes)
+                st.setString(5, artifact.sha256)
+                st.executeUpdate()
+            }
+        }
+    }
+
+    override fun latest(): com.shigusdream.backend.repository.ModArtifact? = db.withConnection { conn ->
+        conn.prepareStatement("SELECT version, filename, bytes, sha256 FROM mod_artifact WHERE id = 1").use { st ->
+            st.executeQuery().use { rs ->
+                if (!rs.next()) null
+                else com.shigusdream.backend.repository.ModArtifact(
+                    version = rs.getString("version"),
+                    filename = rs.getString("filename"),
+                    bytes = rs.getBytes("bytes"),
+                    sha256 = rs.getString("sha256"),
+                )
+            }
+        }
+    }
+}
+
 class PostgresCommandRepository(private val db: Db) : CommandRepository {
 
     override fun insert(command: Command): Boolean {

@@ -47,3 +47,10 @@ data class Command(
     val expiresAt: Instant?,
     var executedAt: Instant? = null,
 )
+
+data class ModArtifact(
+    val version: String,
+    val filename: String,
+    val bytes: ByteArray,
+    val sha256: String,
+)

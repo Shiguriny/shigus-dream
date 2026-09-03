@@ -73,6 +73,7 @@ object ShigusDreamClient : ClientModInitializer {
         config = ModConfig.load(configDir)
         auth = AuthManager(configDir.resolve("shigusdream"), config.backendUrl)
         auth.load()
+        com.shigusdream.admin.ScenarioStore.init(configDir)
 
         registry.register(ShowMessageAction)
         registry.register(NotificationAction)
@@ -162,6 +163,7 @@ object ShigusDreamClient : ClientModInitializer {
         MessageOverlay.tick()
         com.shigusdream.client.ClientEffects.tick()
         com.shigusdream.client.ClientControls.tick(client)
+        com.shigusdream.admin.ScenarioRunner.tick()
     }
 
     /**
@@ -241,6 +243,11 @@ object ShigusDreamClient : ClientModInitializer {
             auth.saveTokens(refreshToken ?: auth.tokens.refreshToken, accessToken, username)
             myRole = role
             chatFeedback("§a[Shigu's Dream]§7 Подключено как $username ($role)")
+            UpdateChecker.checkAndDownload(
+                baseUrl = config.backendUrl,
+                modsDir = FabricLoader.getInstance().gameDir.resolve("mods"),
+                currentVersion = modVersion(),
+            ) { message -> chatFeedback(message) }
         }
 
         override fun onAuthError(code: String, message: String) {

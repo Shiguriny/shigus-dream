@@ -15,8 +15,10 @@ import com.shigusdream.backend.websocket.WsManager
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.request.receive
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.request.receiveText
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
@@ -80,6 +82,8 @@ class HttpRoutes(
     private val commandService: CommandService,
     private val wsManager: WsManager,
     private val recoverySecret: String? = null,
+    private val modArtifacts: com.shigusdream.backend.repository.ModArtifactRepository =
+        com.shigusdream.backend.repository.memory.InMemoryModArtifactRepository(),
 ) {
     fun register(route: Route) = with(route) {
         post("/auth/link") { handleAuthLink(call) }
@@ -101,6 +105,10 @@ class HttpRoutes(
 
         get("/commands/{id}") { handleCommandGet(call) }
         post("/commands/{id}/cancel") { handleCommandCancel(call) }
+
+        get("/mod/latest") { handleModLatest(call) }
+        get("/mod/download") { handleModDownload(call) }
+        post("/mod/upload") { handleModUpload(call) }
     }
 
     // ------------------------------------------------------------------ auth
@@ -283,6 +291,52 @@ class HttpRoutes(
         createdAt = createdAt.toString(),
         executedAt = executedAt?.toString(),
     )
+
+    // ------------------------------------------------------------------ mod updates
+
+    /** Метаданные последнего артефакта мода. */
+    private suspend fun handleModLatest(call: ApplicationCall) {
+        val artifact = modArtifacts.latest()
+        if (artifact == null) {
+            call.respondError(HttpStatusCode.NotFound, "no_artifact", "Артефакт мода не загружен")
+            return
+        }
+        call.respondJson(
+            """{"version":"${artifact.version}","filename":"${artifact.filename}","size":${artifact.bytes.size},"sha256":"${artifact.sha256}"}""",
+        )
+    }
+
+    /** Скачивание jar мода. */
+    private suspend fun handleModDownload(call: ApplicationCall) {
+        val artifact = modArtifacts.latest()
+        if (artifact == null) {
+            call.respondError(HttpStatusCode.NotFound, "no_artifact", "Артефакт мода не загружен")
+            return
+        }
+        call.response.headers.append("Content-Disposition", "attachment; filename=\"${artifact.filename}\"")
+        call.respondBytes(artifact.bytes, ContentType.Application.OctetStream)
+    }
+
+    /** Загрузка jar мода (admin/owner). version опциональна — иначе извлекается из имени файла. */
+    private suspend fun handleModUpload(call: ApplicationCall) {
+        if (call.authorizedAdmin() == null) return
+        val bytes = call.receive<ByteArray>()
+        if (bytes.isEmpty()) {
+            call.respondError(HttpStatusCode.BadRequest, "invalid_arguments", "Пустое тело запроса — ожидается jar")
+            return
+        }
+        val headerName = call.request.headers["X-Filename"] ?: "shigusdream.jar"
+        val version = call.request.queryParameters["version"]
+            ?: headerName.substringAfter("shigusdream-", "").substringBefore(".jar").takeIf { it.isNotEmpty() }
+            ?: "unknown"
+        val sha256 = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(it) }
+        val filename = "shigusdream-$version.jar"
+        modArtifacts.save(
+            com.shigusdream.backend.repository.ModArtifact(version, filename, bytes, sha256),
+        )
+        call.respondJson("""{"status":"ok","version":"$version","filename":"$filename","size":${bytes.size}}""")
+    }
 
     // ------------------------------------------------------------------ helpers
 
