@@ -21,9 +21,9 @@ data class StoredTokens(
  * UUID — идентификатор, но не секрет. Секрет владения — одноразовый код привязки
  * (подтверждается на HTML-странице backend) и refresh-токен, хранящийся локально.
  */
-class AuthManager(private val configDir: Path, private val baseUrl: String) {
+class AuthManager(internal val configDir: Path, internal val baseUrl: String) {
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
-    private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+    internal val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
     val tokens = StoredTokens()
 
     sealed interface LinkOutcome {

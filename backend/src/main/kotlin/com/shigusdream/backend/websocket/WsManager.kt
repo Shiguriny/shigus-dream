@@ -402,6 +402,7 @@ class WsManager(
     private fun User.toDto(): UserDto = UserDto(id = id.toString(), username = username, role = role, mcUuid = mcUuid?.toString())
 
     companion object {
-        const val AUTH_TIMEOUT_MS = 30_000L
+        /** Время на подтверждение кода привязки: игрок может не спешить вводить /link. */
+        const val AUTH_TIMEOUT_MS = 120_000L
     }
 }

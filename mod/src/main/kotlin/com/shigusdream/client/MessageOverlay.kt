@@ -3,6 +3,7 @@ package com.shigusdream.client
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.network.chat.MutableComponent
 import java.util.ArrayDeque
 
 /**
@@ -10,12 +11,12 @@ import java.util.ArrayDeque
  * затухая к концу duration. Чистая JVM-часть (очередь) тестируется без Minecraft.
  */
 object MessageOverlay {
-    private data class Entry(val text: String, var ticksLeft: Int, val totalTicks: Int)
+    private data class Entry(val text: MutableComponent, var ticksLeft: Int, val totalTicks: Int)
 
     private val queue = ArrayDeque<Entry>()
     private const val MAX_QUEUE = 5
 
-    fun enqueue(text: String, durationTicks: Int) {
+    fun enqueue(text: MutableComponent, durationTicks: Int) {
         if (queue.size >= MAX_QUEUE) queue.pollFirst()
         queue.addLast(Entry(text, durationTicks.coerceAtLeast(1), durationTicks.coerceAtLeast(1)))
     }

@@ -85,6 +85,43 @@ object ActionRegistry {
                 SchemaField(key = "pitch", type = "float", min = 0.5, max = 2.0, description = "Высота тона 0.5..2"),
             ),
         ),
+        ActionSpec(
+            id = "shigusdream:apply_effect",
+            name = "Apply Effect",
+            description = "Локальный визуальный эффект на клиенте цели (темнота, слепота, тошнота).",
+            permission = "client.action.apply_effect",
+            schema = listOf(
+                SchemaField(
+                    key = "effect", type = "string", required = true,
+                    allowedValues = listOf("darkness", "blindness", "nausea"),
+                    description = "Визуальный эффект",
+                ),
+                SchemaField(key = "duration", type = "int", min = 20.0, max = 1200.0, description = "Длительность в тиках (20/с)"),
+                SchemaField(key = "amplifier", type = "int", min = 0.0, max = 4.0, description = "Уровень эффекта 0..4"),
+            ),
+        ),
+        ActionSpec(
+            id = "shigusdream:set_fov",
+            name = "Set FOV",
+            description = "Меняет FOV цели и возвращает исходное значение через duration тиков.",
+            permission = "client.action.set_fov",
+            schema = listOf(
+                SchemaField(key = "fov", type = "int", required = true, min = 30.0, max = 110.0, description = "Новое значение FOV"),
+                SchemaField(key = "duration", type = "int", min = 20.0, max = 1200.0, description = "Тиков до возврата исходного FOV"),
+            ),
+        ),
+        ActionSpec(
+            id = "shigusdream:send_chat",
+            name = "Send Chat",
+            description = "Отправляет сообщение в чат от лица игрока (команды запрещены).",
+            permission = "client.action.send_chat",
+            schema = listOf(
+                SchemaField(
+                    key = "message", type = "string", required = true, maxLength = 256,
+                    description = "Сообщение (не команда)",
+                ),
+            ),
+        ),
     )
 
     private val byId = ACTIONS.associateBy { it.id }

@@ -21,8 +21,8 @@ object NotificationToasts {
         SystemToast.add(
             client.toastManager,
             SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-            Component.literal(prefix + title),
-            Component.literal(description),
+            com.shigusdream.client.MiniText.parse(prefix + title),
+            com.shigusdream.client.MiniText.parse(description),
         )
     }
 }

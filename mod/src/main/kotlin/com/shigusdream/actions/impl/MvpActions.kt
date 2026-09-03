@@ -25,7 +25,7 @@ object ShowMessageAction : ClientAction {
     override fun execute(client: Any?, context: ActionContext): ActionResult {
         val text = context.args.get("text")?.asString ?: return ActionResult.fail("missing text")
         val duration = context.args.get("duration")?.takeIf { it.isJsonPrimitive }?.asInt ?: 100
-        com.shigusdream.client.MessageOverlay.enqueue(text, duration)
+        com.shigusdream.client.MessageOverlay.enqueue(com.shigusdream.client.MiniText.parse(text), duration)
         return ActionResult.ok()
     }
 }

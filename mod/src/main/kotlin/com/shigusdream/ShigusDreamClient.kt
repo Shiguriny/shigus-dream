@@ -3,11 +3,15 @@ package com.shigusdream
 import com.google.gson.JsonObject
 import com.shigusdream.actions.ActionDispatcher
 import com.shigusdream.actions.ActionRegistry
+import com.shigusdream.actions.impl.ApplyEffectAction
 import com.shigusdream.actions.impl.NotificationAction
 import com.shigusdream.actions.impl.PlaySoundAction
+import com.shigusdream.actions.impl.SendChatAction
+import com.shigusdream.actions.impl.SetFovAction
 import com.shigusdream.actions.impl.ShowMessageAction
 import com.shigusdream.admin.AdminScreen
 import com.shigusdream.auth.AuthManager
+import com.shigusdream.auth.confirmLink
 import com.shigusdream.client.HudElements
 import com.shigusdream.client.MessageOverlay
 import com.shigusdream.config.ModConfig
@@ -54,6 +58,10 @@ object ShigusDreamClient : ClientModInitializer {
         registry.register(ShowMessageAction)
         registry.register(NotificationAction)
         registry.register(PlaySoundAction)
+        registry.register(ApplyEffectAction)
+        registry.register(SetFovAction)
+        registry.register(SendChatAction)
+        LinkCommand.register()
 
         connection = BackendConnection(
             wsUrl = ModConfig.websocketUrl(config.backendUrl),
@@ -126,6 +134,35 @@ object ShigusDreamClient : ClientModInitializer {
             }
         }
         MessageOverlay.tick()
+        com.shigusdream.client.ClientEffects.tick()
+    }
+
+    /**
+     * Подтверждение привязки из игры (/link <код>): отправляем код и ник на backend,
+     * привязка завершится по уже открытому WS-соединению.
+     */
+    fun confirmLinkCode(code: String) {
+        if (auth.hasRefreshToken) {
+            chatFeedback("§e[Shigu's Dream]§7 Аккаунт уже привязан — /link не нужен")
+            return
+        }
+        if (connection.currentState != BackendConnection.State.AUTHENTICATING) {
+            chatFeedback("§c[Shigu's Dream]§7 Нет активной привязки — зайдите в мир и дождитесь кода")
+            return
+        }
+        val name = Minecraft.getInstance().user?.name
+        if (name == null) {
+            chatFeedback("§c[Shigu's Dream]§7 Не удалось получить ник")
+            return
+        }
+        Thread {
+            val (status, _) = auth.confirmLink(code, name)
+            if (status == 200) {
+                chatFeedback("§a[Shigu's Dream]§7 Код принят — подключение завершится автоматически")
+            } else {
+                chatFeedback("§c[Shigu's Dream]§7 Подтверждение не удалось (HTTP $status) — проверьте код")
+            }
+        }.apply { isDaemon = true }.start()
     }
 
     // ------------------------------------------------------------------ handlers
