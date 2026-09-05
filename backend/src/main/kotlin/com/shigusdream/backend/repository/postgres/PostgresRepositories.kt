@@ -202,7 +202,7 @@ class PostgresModArtifactRepository(private val db: Db) : com.shigusdream.backen
     override fun save(artifact: com.shigusdream.backend.repository.ModArtifact) {
         db.withConnection { conn ->
             conn.prepareStatement(
-                "INSERT INTO mod_artifact (id, version, filename, bytes, sha256, created_at) VALUES (1, ?, ?, ?, ?, now()) " +
+                "INSERT INTO mod_artifact (id, version, filename, bytes, sha256, created_at) VALUES (?, ?, ?, ?, ?, now()) " +
                     "ON CONFLICT (id) DO UPDATE SET version = EXCLUDED.version, filename = EXCLUDED.filename, " +
                     "bytes = EXCLUDED.bytes, sha256 = EXCLUDED.sha256, created_at = now()",
             ).use { st ->
