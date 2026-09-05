@@ -22,7 +22,8 @@ object ApplyFilterAction : ClientAction {
             SchemaField(
                 key = "effect", type = FieldType.STRING, required = true,
                 allowedValues = listOf(
-                    "grayscale", "blur", "invert", "spider_vision", "vignette", "vhs", "noise",
+                    "grayscale", "blur", "invert", "spider_vision", "vignette", "vhs",
+                    "noise", "noise_fast",
                     "darkening", "sleepy", "color_filter", "damaged_vision",
                 ),
                 description = "Экранный эффект",

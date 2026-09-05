@@ -1,0 +1,16 @@
+{
+    "targets": {},
+    "passes": [
+        {
+            "vertex_shader": "minecraft:core/screenquad",
+            "fragment_shader": "shigusdream:post/noisefast",
+            "inputs": [
+                {
+                    "sampler_name": "In",
+                    "target": "minecraft:main"
+                }
+            ],
+            "output": "minecraft:main"
+        }
+    ]
+}
