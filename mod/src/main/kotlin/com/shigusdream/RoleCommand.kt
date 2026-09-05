@@ -52,14 +52,21 @@ object RoleCommand {
             ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 Команда только для администраторов")
             return
         }
-        val container = net.fabricmc.loader.api.FabricLoader.getInstance()
-            .getModContainer(ShigusDream.MOD_ID).orElse(null)
-        // Для jar-мода один из корней контейнера — сам jar-файл.
-        val jar = container?.rootPaths?.firstOrNull {
-            java.nio.file.Files.isRegularFile(it) && it.fileName.toString().endsWith(".jar")
+        // Loader отдаёт rootPaths как корень jar-файлсистемы, а не файл — ищем jar в папке mods.
+        val modsDir = net.fabricmc.loader.api.FabricLoader.getInstance().gameDir.resolve("mods")
+        val exact = "shigusdream-${ShigusDreamClient.modVersion()}.jar"
+        val jar = java.nio.file.Files.list(modsDir).use { stream ->
+            val candidates = stream
+                .filter { p ->
+                    val name = p.fileName.toString()
+                    name.startsWith("shigusdream-") && name.endsWith(".jar")
+                }
+                .toList()
+            candidates.firstOrNull { it.fileName.toString() == exact }
+                ?: candidates.maxByOrNull { java.nio.file.Files.getLastModifiedTime(it).toMillis() }
         }
         if (jar == null) {
-            ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 Jar не найден (в dev-окружении команда недоступна)")
+            ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 shigusdream-*.jar не найден в ${modsDir.toAbsolutePath()}")
             return
         }
         val version = ShigusDreamClient.modVersion()
