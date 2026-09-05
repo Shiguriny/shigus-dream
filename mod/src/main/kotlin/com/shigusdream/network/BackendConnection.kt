@@ -53,6 +53,9 @@ class BackendConnection(
         /** Роль текущего аккаунта изменена на лету (владельцем). */
         fun onRoleUpdate(newRole: String) {}
 
+        /** Входящий голосовой кадр (PCM) от другого игрока. */
+        fun onVoiceData(pcm: ByteArray) {}
+
         /** Человекочитаемое сообщение о состоянии связи (для чата). */
         fun onMessage(line: String) {}
 
@@ -165,6 +168,12 @@ class BackendConnection(
             }
 
             override fun onText(message: String) = handleIncoming(message)
+
+            override fun onBinary(bytes: ByteArray) {
+                if (state.get() == State.ONLINE) {
+                    handler?.onVoiceData(bytes)
+                }
+            }
 
             override fun onClosed(code: Int, reason: String) {
                 ShigusDream.LOGGER.info("ws закрыт: code={} reason={}", code, reason)
@@ -335,6 +344,11 @@ class BackendConnection(
             error?.let { addProperty("error", it) }
         }
         client?.send(Envelope(Msg.ACTION_RESULT, requestId = requestId, payload = payload).toJson())
+    }
+
+    /** Голосовой кадр (PCM) в бинарном WS-кадре. */
+    fun sendVoiceBinary(pcm: ByteArray) {
+        client?.sendBinary(pcm)
     }
 
     private fun setState(newState: State) {

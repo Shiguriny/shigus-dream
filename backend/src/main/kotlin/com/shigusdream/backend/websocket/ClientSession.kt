@@ -28,6 +28,13 @@ class ClientSession(val raw: WebSocketServerSession) {
         }
     }
 
+    suspend fun sendBinary(data: ByteArray) {
+        try {
+            raw.outgoing.send(Frame.Binary(true, data))
+        } catch (_: ClosedSendChannelException) {
+        }
+    }
+
     suspend fun close(reason: CloseReason) {
         try {
             raw.close(reason)

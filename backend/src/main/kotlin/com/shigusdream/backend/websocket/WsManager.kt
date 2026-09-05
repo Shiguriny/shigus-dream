@@ -79,13 +79,27 @@ class WsManager(
                 return
             }
             for (frame in session.raw.incoming) {
-                if (frame is Frame.Text) {
-                    handleText(session, frame.readText())
+                when (frame) {
+                    is Frame.Text -> handleText(session, frame.readText())
+                    is Frame.Binary -> relayVoice(session, frame.data)
+                    else -> {}
                 }
             }
         } finally {
             onDisconnected(session)
         }
+    }
+
+    /** Голосовой кадр: ретрансляция всем остальным аутентифицированным сессиям (групповая рация). */
+    private suspend fun relayVoice(from: ClientSession, data: ByteArray) {
+        if (data.size > 64 * 1024) return // защита от мусора
+        var receivers = 0
+        for ((_, session) in sessions) {
+            if (session.raw === from.raw) continue
+            session.sendBinary(data)
+            receivers++
+        }
+        if (receivers == 0) log.debug("voice: нет получателей")
     }
 
     private suspend fun onDisconnected(session: ClientSession) {

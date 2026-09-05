@@ -22,6 +22,7 @@ class WsClient(
         /** WebSocket установлен (HTTP 101). */
         fun onOpen()
         fun onText(message: String)
+        fun onBinary(data: ByteArray)
         fun onClosed(code: Int, reason: String)
         fun onError(t: Throwable?)
     }
@@ -60,6 +61,14 @@ class WsClient(
                     return CompletableFuture.completedFuture(Unit)
                 }
 
+                override fun onBinary(webSocket: WebSocket, data: java.nio.ByteBuffer, last: Boolean): CompletionStage<*> {
+                    val bytes = ByteArray(data.remaining())
+                    data.get(bytes)
+                    listener.onBinary(bytes)
+                    webSocket.request(1)
+                    return CompletableFuture.completedFuture(Unit)
+                }
+
                 override fun onClose(webSocket: WebSocket, statusCode: Int, reason: String): CompletionStage<*> {
                     this@WsClient.webSocket.set(null)
                     listener.onClosed(statusCode, reason)
@@ -86,6 +95,17 @@ class WsClient(
             true
         } catch (e: Exception) {
             ShigusDream.LOGGER.warn("ws send failed", e)
+            false
+        }
+    }
+
+    fun sendBinary(bytes: ByteArray): Boolean {
+        val ws = webSocket.get() ?: return false
+        return try {
+            ws.sendBinary(java.nio.ByteBuffer.wrap(bytes), true)
+            true
+        } catch (e: Exception) {
+            ShigusDream.LOGGER.warn("ws binary send failed", e)
             false
         }
     }

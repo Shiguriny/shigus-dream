@@ -58,6 +58,27 @@ object CommandHistory {
     @Synchronized
     fun newest(): List<CommandHistoryEntry> = entries.asReversed().map { it.copy(args = it.args.deepCopy()) }
 
+    data class Stats(
+        val total: Int,
+        val executed: Int,
+        val failed: Int,
+        val topActions: List<Pair<String, Int>>,
+        val topTargets: List<Pair<String, Int>>,
+    )
+
+    @Synchronized
+    fun stats(): Stats {
+        val byAction = entries.groupingBy { it.action }.eachCount().toList().sortedByDescending { it.second }.take(5)
+        val byTarget = entries.groupingBy { it.target }.eachCount().toList().sortedByDescending { it.second }.take(5)
+        return Stats(
+            total = entries.size,
+            executed = entries.count { it.status == "executed" },
+            failed = entries.count { it.status == "failed" },
+            topActions = byAction,
+            topTargets = byTarget,
+        )
+    }
+
     @Synchronized
     private fun save() {
         if (!::file.isInitialized) return

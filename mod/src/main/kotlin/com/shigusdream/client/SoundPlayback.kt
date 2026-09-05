@@ -25,4 +25,21 @@ object SoundPlayback {
         ShigusDream.LOGGER.info("sound {} played", soundId)
         return ActionResult.ok()
     }
+
+    /** Позиционный звук в точке мира. */
+    fun playAt(soundId: String, x: Double, y: Double, z: Double, volume: Float): Boolean {
+        val client = Minecraft.getInstance()
+        val identifier = Identifier.tryParse(soundId) ?: return false
+        val soundEvent = BuiltInRegistries.SOUND_EVENT.get(identifier)
+            .map { it.value() }
+            .orElse(null) ?: return false
+        val player = client.player ?: return false
+        client.soundManager.play(
+            net.minecraft.client.resources.sounds.SimpleSoundInstance(
+                soundEvent, net.minecraft.sounds.SoundSource.MASTER, volume, 1.0f,
+                player.random, x, y, z,
+            ),
+        )
+        return true
+    }
 }

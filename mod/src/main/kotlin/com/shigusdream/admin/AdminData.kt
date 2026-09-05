@@ -18,10 +18,22 @@ data class PlayerGroup(
     val members: MutableSet<String> = linkedSetOf(),
 )
 
+data class GeoTrigger(
+    val name: String,
+    val dimension: String,
+    val x: Double,
+    val y: Double,
+    val z: Double,
+    val radius: Double,
+    val scenario: String,
+    var enabled: Boolean = true,
+)
+
 private data class AdminData(
     val favorites: MutableSet<String> = linkedSetOf(),
     val presets: MutableList<ActionPreset> = mutableListOf(),
     val groups: MutableList<PlayerGroup> = mutableListOf(),
+    val triggers: MutableList<GeoTrigger> = mutableListOf(),
 )
 
 /** Persistent favorites, argument presets and player groups. */
@@ -33,6 +45,26 @@ object AdminDataStore {
     private var data = AdminData()
 
     val favorites: Set<String> get() = data.favorites
+    val triggers: List<GeoTrigger> get() = data.triggers
+
+    fun createTrigger(trigger: GeoTrigger): Boolean {
+        if (data.triggers.any { it.name == trigger.name }) return false
+        data.triggers += trigger
+        save()
+        return true
+    }
+
+    fun deleteTrigger(name: String) {
+        data.triggers.removeIf { it.name == name }
+        save()
+    }
+
+    fun toggleTrigger(name: String): Boolean {
+        val t = data.triggers.firstOrNull { it.name == name } ?: return false
+        t.enabled = !t.enabled
+        save()
+        return t.enabled
+    }
     val presets: List<ActionPreset> get() = data.presets
     val groups: List<PlayerGroup> get() = data.groups
 

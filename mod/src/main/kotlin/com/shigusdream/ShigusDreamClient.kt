@@ -8,6 +8,11 @@ import com.shigusdream.actions.ActionRegistry
 import com.shigusdream.actions.ActionValidator
 import com.shigusdream.actions.impl.ApplyEffectAction
 import com.shigusdream.actions.impl.ApplyFilterAction
+import com.shigusdream.actions.impl.CinematicAction
+import com.shigusdream.actions.impl.CameraShakeAction
+import com.shigusdream.actions.impl.PlayAmbientAction
+import com.shigusdream.actions.impl.ScareAction
+import com.shigusdream.actions.impl.HighlightAction
 import com.shigusdream.actions.impl.FreezeControlsAction
 import com.shigusdream.actions.impl.NotificationAction
 import com.shigusdream.actions.impl.PlaySoundAction
@@ -74,6 +79,8 @@ object ShigusDreamClient : ClientModInitializer {
 
     private lateinit var openAdminKey: KeyMapping
     private lateinit var statusKey: KeyMapping
+    private lateinit var pttKey: KeyMapping
+    private var geoCheckCounter = 0
 
     override fun onInitializeClient() {
         val configDir = FabricLoader.getInstance().configDir
@@ -93,6 +100,11 @@ object ShigusDreamClient : ClientModInitializer {
         registry.register(SetSlotAction)
         registry.register(FreezeControlsAction)
         registry.register(ApplyFilterAction)
+        registry.register(CinematicAction)
+        registry.register(CameraShakeAction)
+        registry.register(PlayAmbientAction)
+        registry.register(ScareAction)
+        registry.register(HighlightAction)
         LinkCommand.register()
         RoleCommand.register()
 
@@ -112,12 +124,16 @@ object ShigusDreamClient : ClientModInitializer {
             isAllowed = { action -> action !in config.blockedActions },
         )
         ShigusDreamRuntime.dispatcher = dispatcher
+        com.shigusdream.client.VoiceChat.setSender { pcm -> connection.sendVoiceBinary(pcm) }
 
         openAdminKey = KeyMappingHelper.registerKeyMapping(
             KeyMapping("key.shigusdream.admin_panel", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, adminCategory),
         )
         statusKey = KeyMappingHelper.registerKeyMapping(
             KeyMapping("key.shigusdream.status", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, adminCategory),
+        )
+        pttKey = KeyMappingHelper.registerKeyMapping(
+            KeyMapping("key.shigusdream.ptt", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, adminCategory),
         )
 
         ClientTickEvents.START_CLIENT_TICK.register { client ->
@@ -136,6 +152,8 @@ object ShigusDreamClient : ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             connection.disconnect()
         }
+        // При выходе из мира голос и гео-триггеры сбрасываются.
+        com.shigusdream.client.VoiceChat.stopAll()
 
         ShigusDream.LOGGER.info("Shigu's Dream v{} инициализирован; backend={}", modVersion(), config.backendUrl)
     }
@@ -184,6 +202,19 @@ object ShigusDreamClient : ClientModInitializer {
         com.shigusdream.client.ClientControls.endTick(client)
         com.shigusdream.client.ScreenFx.tick(client)
         com.shigusdream.admin.ScenarioRunner.tick()
+        com.shigusdream.client.AmbientAudio.tick(client)
+        com.shigusdream.client.Highlight.tick(client)
+        com.shigusdream.client.CinematicFx.tick(client)
+        if (!com.shigusdream.client.ClientControls.isFrozen) {
+            com.shigusdream.client.VoiceChat.setPTT(pttKey.isDown && connection.isOnline)
+        } else {
+            com.shigusdream.client.VoiceChat.setPTT(false)
+        }
+        geoCheckCounter++
+        if (geoCheckCounter >= 20) {
+            geoCheckCounter = 0
+            com.shigusdream.admin.GeoTriggerRuntime.check(client)
+        }
     }
 
     /**
@@ -283,6 +314,10 @@ object ShigusDreamClient : ClientModInitializer {
                 chatFeedback("§c[Shigu's Dream]§7 Ошибка аутентификации: $message")
             }
             ShigusDream.LOGGER.warn("auth error: {} {}", code, message)
+        }
+
+        override fun onVoiceData(pcm: ByteArray) {
+            com.shigusdream.client.VoiceChat.enqueuePlayback(pcm)
         }
 
         override fun onActionResult(requestId: String, action: String, status: String, error: String?) {
