@@ -46,5 +46,13 @@ CREATE TABLE IF NOT EXISTS commands (
     executed_at TIMESTAMPTZ
 );
 
+
+-- Сценарии веб-панели (исполняются на backend).
+CREATE TABLE IF NOT EXISTS web_scenarios (
+    name TEXT PRIMARY KEY,
+    data JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_commands_target_status ON commands (target_id, status);
 CREATE INDEX IF NOT EXISTS idx_commands_sender ON commands (sender_id);

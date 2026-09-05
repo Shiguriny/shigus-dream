@@ -84,6 +84,8 @@ class HttpRoutes(
     private val recoverySecret: String? = null,
     private val modArtifacts: com.shigusdream.backend.repository.ModArtifactRepository =
         com.shigusdream.backend.repository.memory.InMemoryModArtifactRepository(),
+    private val webScenarioService: com.shigusdream.backend.web.WebScenarioService? = null,
+    private val commands: com.shigusdream.backend.repository.CommandRepository? = null,
 ) {
     fun register(route: Route) = with(route) {
         post("/auth/link") { handleAuthLink(call) }
@@ -118,6 +120,16 @@ class HttpRoutes(
         post("/commands/{id}/cancel") { handleCommandCancel(call) }
 
         get("/mod/latest") { handleModLatest(call) }
+
+        // Веб-сценарии (исполняются на backend)
+        get("/web/scenarios") { handleWebScenarioList(call) }
+        post("/web/scenarios") { handleWebScenarioSave(call) }
+        delete("/web/scenarios/{name}") { handleWebScenarioDelete(call) }
+        post("/web/scenarios/{name}/run") { handleWebScenarioRun(call) }
+        get("/web/runs") { handleWebRuns(call) }
+        post("/web/runs/{runId}/stop") { handleWebRunStop(call) }
+        get("/web/history") { handleWebHistory(call) }
+        get("/web/stats") { handleWebStats(call) }
         get("/mod/download") { handleModDownload(call) }
         post("/mod/upload") { handleModUpload(call) }
     }
@@ -405,6 +417,128 @@ class HttpRoutes(
             com.shigusdream.backend.repository.ModArtifact(version, filename, bytes, sha256),
         )
         call.respondJson("""{"status":"ok","version":"$version","filename":"$filename","size":${bytes.size}}""")
+    }
+
+    // ------------------------------------------------------------------ web scenarios
+
+    private suspend fun handleWebScenarioList(call: ApplicationCall) {
+        if (call.authorizedAdmin() == null) return
+        val list = webScenarioService?.list().orEmpty()
+        val arr = list.joinToString(",") { sc ->
+            val steps = sc.steps.joinToString(",") { st ->
+                "{\"target\":\"" + st.target + "\",\"action\":\"" + st.action + "\",\"args\":" + st.args +
+                    ",\"delay_ms\":" + st.delayMs + ",\"repeat\":" + st.repeat +
+                    ",\"wait_for_result\":" + st.waitForResult + ",\"stop_on_error\":" + st.stopOnError + "}"
+            }
+            "{\"name\":\"" + sc.name + "\",\"loops\":" + sc.loops + ",\"scheduled_minutes\":" + sc.scheduledMinutes + ",\"steps\":[" + steps + "]}"
+        }
+        call.respondJson("{\"scenarios\":[" + arr + "]}")
+    }
+
+    private suspend fun handleWebScenarioSave(call: ApplicationCall) {
+        val admin = call.authorizedAdmin() ?: return
+        val body = try {
+            json.decodeFromString(kotlinx.serialization.json.JsonObject.serializer(), call.receiveText())
+        } catch (_: Exception) {
+            call.respondError(HttpStatusCode.BadRequest, "malformed_request", "Ожидается JSON {name, steps, loops, scheduled_minutes}")
+            return
+        }
+        val name = (body["name"] as? kotlinx.serialization.json.JsonPrimitive)?.content
+        if (name.isNullOrBlank()) {
+            call.respondError(HttpStatusCode.BadRequest, "invalid_arguments", "name обязателен")
+            return
+        }
+        val stepsArr = (body["steps"] as? kotlinx.serialization.json.JsonArray) ?: kotlinx.serialization.json.JsonArray(emptyList())
+        val steps = mutableListOf<com.shigusdream.backend.repository.WebScenarioStep>()
+        for (el in stepsArr) {
+            val o = el as? kotlinx.serialization.json.JsonObject ?: continue
+            val target = (o["target"] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: continue
+            val action = (o["action"] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: continue
+            val args = (o["args"] as? kotlinx.serialization.json.JsonObject)?.toString() ?: "{}"
+            steps += com.shigusdream.backend.repository.WebScenarioStep(
+                target = target,
+                action = action,
+                args = args,
+                delayMs = (o["delay_ms"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull() ?: 1000,
+                repeat = (o["repeat"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull() ?: 1,
+                waitForResult = (o["wait_for_result"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: true,
+                stopOnError = (o["stop_on_error"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: true,
+            )
+        }
+        val loops = (body["loops"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull() ?: 1
+        val scheduled = (body["scheduled_minutes"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull() ?: 0
+        val scenario = com.shigusdream.backend.repository.WebScenario(
+            name = name, steps = steps, loops = loops.coerceIn(1, 100),
+            scheduledMinutes = scheduled.coerceIn(0, 1440), createdBy = admin.username,
+        )
+        webScenarioService?.save(scenario)
+        call.respondJson("{\"status\":\"ok\",\"name\":\"" + name + "\",\"steps\":" + steps.size + "}")
+    }
+
+    private suspend fun handleWebScenarioDelete(call: ApplicationCall) {
+        if (call.authorizedAdmin() == null) return
+        val name = call.parameters["name"] ?: ""
+        val deleted = webScenarioService?.delete(name) ?: false
+        if (deleted) call.respondJson("{\"status\":\"ok\"}")
+        else call.respondError(HttpStatusCode.NotFound, "unknown_scenario", "Сценарий не найден")
+    }
+
+    private suspend fun handleWebScenarioRun(call: ApplicationCall) {
+        val admin = call.authorizedAdmin() ?: return
+        val name = call.parameters["name"] ?: ""
+        val runId = webScenarioService?.run(name, admin.username)
+        if (runId == null) {
+            call.respondError(HttpStatusCode.NotFound, "unknown_scenario", "Сценарий не найден или пуст")
+            return
+        }
+        call.respondJson("{\"status\":\"running\",\"run_id\":\"" + runId + "\"}")
+    }
+
+    private suspend fun handleWebRuns(call: ApplicationCall) {
+        if (call.authorizedAdmin() == null) return
+        val states = webScenarioService?.runStates().orEmpty()
+        val arr = states.joinToString(",") { st ->
+            val err = st.lastError?.let { "\"" + it.replace("\"", "'") + "\"" } ?: "null"
+            "{\"run_id\":\"" + st.runId + "\",\"scenario\":\"" + st.scenario.replace("\"", "'") +
+                "\",\"step\":" + st.step + ",\"total_steps\":" + st.totalSteps +
+                ",\"loop\":" + st.loop + ",\"loops\":" + st.loops +
+                ",\"status\":\"" + st.status + "\",\"last_error\":" + err + "}"
+        }
+        call.respondJson("{\"runs\":[" + arr + "]}")
+    }
+
+    private suspend fun handleWebRunStop(call: ApplicationCall) {
+        if (call.authorizedAdmin() == null) return
+        webScenarioService?.stop(call.parameters["runId"].orEmpty())
+        call.respondJson("{\"status\":\"ok\"}")
+    }
+
+    private suspend fun handleWebHistory(call: ApplicationCall) {
+        if (call.authorizedAdmin() == null) return
+        val recent = commands?.recent(30).orEmpty()
+        val arr = recent.joinToString(",") { c ->
+            val target = users.byId(c.targetId)?.username ?: c.targetId.toString()
+            val sender = users.byId(c.senderId)?.username ?: c.senderId.toString()
+            val err = c.error?.let { "\"" + it.replace("\"", "'") + "\"" } ?: "null"
+            "{\"request_id\":\"" + c.requestId + "\",\"action\":\"" + c.actionId +
+                "\",\"target\":\"" + target + "\",\"sender\":\"" + sender +
+                "\",\"status\":\"" + c.status + "\",\"error\":" + err +
+                ",\"created_at\":\"" + c.createdAt + "\"}"
+        }
+        call.respondJson("{\"history\":[" + arr + "]}")
+    }
+
+    private suspend fun handleWebStats(call: ApplicationCall) {
+        if (call.authorizedAdmin() == null) return
+        val recent = commands?.recent(200).orEmpty()
+        val total = recent.size
+        val executed = recent.count { it.status == "executed" }
+        val failed = recent.count { it.status == "failed" }
+        val byAction = recent.groupingBy { it.actionId }.eachCount().toList().sortedByDescending { it.second }.take(5)
+        val byTarget = recent.groupingBy { users.byId(it.targetId)?.username ?: "?" }.eachCount().toList().sortedByDescending { it.second }.take(5)
+        val actionsArr = byAction.joinToString(",") { (a, c) -> "{\"action\":\"" + a + "\",\"count\":" + c + "}" }
+        val targetsArr = byTarget.joinToString(",") { (t, c) -> "{\"target\":\"" + t + "\",\"count\":" + c + "}" }
+        call.respondJson("{\"total\":" + total + ",\"executed\":" + executed + ",\"failed\":" + failed + ",\"top_actions\":[" + actionsArr + "],\"top_targets\":[" + targetsArr + "]}")
     }
 
     // ------------------------------------------------------------------ helpers

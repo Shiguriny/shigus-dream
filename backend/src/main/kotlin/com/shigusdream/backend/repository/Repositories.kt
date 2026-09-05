@@ -28,6 +28,9 @@ interface CommandRepository {
     fun byRequestId(requestId: String): Command?
     fun update(command: Command)
     fun pendingForTarget(targetId: UUID): List<Command>
+
+    /** Последние команды (для веб-панели/истории). */
+    fun recent(limit: Int = 30): List<Command>
 }
 
 interface ModArtifactRepository {

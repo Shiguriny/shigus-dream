@@ -38,6 +38,8 @@ class AppContext(
     val linkCodes: LinkCodeRepository,
     val commands: CommandRepository,
     val modArtifacts: com.shigusdream.backend.repository.ModArtifactRepository,
+    val webScenarios: com.shigusdream.backend.repository.WebScenarioRepository,
+    val webScenarioService: com.shigusdream.backend.web.WebScenarioService,
     val tokenService: TokenService,
     val permissions: PermissionService,
     val linkCodeService: LinkCodeService,
@@ -66,6 +68,9 @@ fun buildContext(config: AppConfig): AppContext {
     val modArtifacts: com.shigusdream.backend.repository.ModArtifactRepository =
         db?.let { com.shigusdream.backend.repository.postgres.PostgresModArtifactRepository(it) }
             ?: com.shigusdream.backend.repository.memory.InMemoryModArtifactRepository()
+    val webScenarios: com.shigusdream.backend.repository.WebScenarioRepository =
+        db?.let { com.shigusdream.backend.repository.postgres.PostgresWebScenarioRepository(it) }
+            ?: com.shigusdream.backend.repository.memory.InMemoryWebScenarioRepository()
 
     val tokenService = TokenService(config.jwtSecret)
     val pgUsers = users as? PostgresUserRepository
@@ -76,7 +81,9 @@ fun buildContext(config: AppConfig): AppContext {
     val commandService = CommandService(users, commands, permissions)
     val wsManager = WsManager(users, linkCodes, tokenService, linkCodeService, permissions, commandService)
 
-    return AppContext(config, users, linkCodes, commands, modArtifacts, tokenService, permissions, linkCodeService, commandService, wsManager, db)
+    val webScenarioService = com.shigusdream.backend.web.WebScenarioService(webScenarios, users, commandService, wsManager)
+
+    return AppContext(config, users, linkCodes, commands, modArtifacts, webScenarios, webScenarioService, tokenService, permissions, linkCodeService, commandService, wsManager, db)
 }
 
 fun Application.module(ctx: AppContext) {
@@ -102,6 +109,8 @@ fun Application.module(ctx: AppContext) {
             ctx.linkCodeService, ctx.commandService, ctx.wsManager,
             recoverySecret = ctx.config.recoverySecret,
             modArtifacts = ctx.modArtifacts,
+            webScenarioService = ctx.webScenarioService,
+            commands = ctx.commands,
         ).register(this)
 
         webSocket("/ws") {
@@ -121,6 +130,8 @@ fun main() {
         if (config.storage == AppConfig.Storage.POSTGRES) "postgres" else "memory",
         if (config.recoverySecret != null) "enabled" else "disabled",
     )
+
+    ctx.webScenarioService.startScheduler()
 
     val server = embeddedServer(Netty, port = config.port, host = "0.0.0.0") {
         module(ctx)

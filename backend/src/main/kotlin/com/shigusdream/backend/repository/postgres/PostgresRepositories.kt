@@ -231,6 +231,109 @@ class PostgresModArtifactRepository(private val db: Db) : com.shigusdream.backen
     }
 }
 
+class PostgresWebScenarioRepository(private val db: Db) : com.shigusdream.backend.repository.WebScenarioRepository {
+
+    override fun save(scenario: com.shigusdream.backend.repository.WebScenario) {
+        val json = kotlinx.serialization.json.Json.encodeToString(
+            WebScenarioDto.serializer(),
+            WebScenarioDto.from(scenario),
+        )
+        db.withConnection { conn ->
+            conn.prepareStatement(
+                "INSERT INTO web_scenarios (name, data, created_at) VALUES (?, ?::jsonb, now()) " +
+                    "ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data, created_at = now()",
+            ).use { st ->
+                st.setString(1, scenario.name)
+                st.setString(2, json)
+                st.executeUpdate()
+            }
+        }
+    }
+
+    override fun list(): List<com.shigusdream.backend.repository.WebScenario> = db.withConnection { conn ->
+        conn.prepareStatement("SELECT data FROM web_scenarios ORDER BY name").use { st ->
+            st.executeQuery().use { rs ->
+                val result = mutableListOf<com.shigusdream.backend.repository.WebScenario>()
+                while (rs.next()) {
+                    runCatching {
+                        val dto = WebScenarioDto.fromJson(rs.getString("data"))
+                        result += dto.toModel()
+                    }
+                }
+                result
+            }
+        }
+    }
+
+    override fun byName(name: String): com.shigusdream.backend.repository.WebScenario? = db.withConnection { conn ->
+        conn.prepareStatement("SELECT data FROM web_scenarios WHERE name = ?").use { st ->
+            st.setString(1, name)
+            st.executeQuery().use { rs ->
+                if (!rs.next()) null
+                else runCatching {
+                    WebScenarioDto.fromJson(rs.getString("data")).toModel()
+                }.getOrNull()
+            }
+        }
+    }
+
+    override fun delete(name: String): Boolean = db.withConnection { conn ->
+        conn.prepareStatement("DELETE FROM web_scenarios WHERE name = ?").use { st ->
+            st.setString(1, name)
+            st.executeUpdate() > 0
+        }
+    }
+}
+
+@kotlinx.serialization.Serializable
+data class WebScenarioStepDto(
+    val target: String,
+    val action: String,
+    val args: String,
+    val delay_ms: Int = 1000,
+    val repeat: Int = 1,
+    val wait_for_result: Boolean = true,
+    val stop_on_error: Boolean = true,
+)
+
+@kotlinx.serialization.Serializable
+data class WebScenarioDto(
+    val name: String,
+    val steps: List<WebScenarioStepDto>,
+    val loops: Int = 1,
+    val scheduled_minutes: Int = 0,
+    val created_by: String,
+) {
+    companion object {
+        fun from(m: com.shigusdream.backend.repository.WebScenario): WebScenarioDto = WebScenarioDto(
+            name = m.name,
+            steps = m.steps.map {
+                WebScenarioStepDto(it.target, it.action, it.args, it.delayMs, it.repeat, it.waitForResult, it.stopOnError)
+            },
+            loops = m.loops,
+            scheduled_minutes = m.scheduledMinutes,
+            created_by = m.createdBy,
+        )
+
+        fun fromJson(json: String): WebScenarioDto =
+            kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString(serializer(), json)
+    }
+
+    fun toModel(): com.shigusdream.backend.repository.WebScenario = com.shigusdream.backend.repository.WebScenario(
+        name = name,
+        steps = steps.map {
+            com.shigusdream.backend.repository.WebScenarioStep(
+                target = it.target, action = it.action, args = it.args,
+                delayMs = it.delay_ms, repeat = it.repeat,
+                waitForResult = it.wait_for_result, stopOnError = it.stop_on_error,
+            )
+        },
+        loops = loops,
+        scheduledMinutes = scheduled_minutes,
+        createdBy = created_by,
+    )
+}
+
 class PostgresCommandRepository(private val db: Db) : CommandRepository {
 
     override fun insert(command: Command): Boolean {
@@ -302,6 +405,20 @@ class PostgresCommandRepository(private val db: Db) : CommandRepository {
                 "FROM commands WHERE target_id = ? AND status = 'pending' AND mode = 'queued' ORDER BY created_at",
         ).use { st ->
             st.setObject(1, targetId)
+            st.executeQuery().use { rs ->
+                val result = mutableListOf<Command>()
+                while (rs.next()) result += commandFrom(rs)
+                result
+            }
+        }
+    }
+
+    override fun recent(limit: Int): List<Command> = db.withConnection { conn ->
+        conn.prepareStatement(
+            "SELECT id, request_id, sender_id, target_id, action_id, payload::text AS payload, mode, status, error, created_at, expires_at, executed_at " +
+                "FROM commands ORDER BY created_at DESC LIMIT ?",
+        ).use { st ->
+            st.setInt(1, limit)
             st.executeQuery().use { rs ->
                 val result = mutableListOf<Command>()
                 while (rs.next()) result += commandFrom(rs)

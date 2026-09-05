@@ -108,4 +108,7 @@ class InMemoryCommandRepository : CommandRepository {
         byId.values
             .filter { it.targetId == targetId && it.status == "pending" && it.mode == "queued" }
             .sortedBy { it.createdAt }
+
+    override fun recent(limit: Int): List<Command> =
+        byId.values.sortedByDescending { it.createdAt }.take(limit)
 }
