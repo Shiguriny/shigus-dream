@@ -1,0 +1,11 @@
+# Railway: деплой backend из Dockerfile (контекст — корень репозитория,
+# Postgres добавляется как плагин проекта и привязывается переменной в дашборде).
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

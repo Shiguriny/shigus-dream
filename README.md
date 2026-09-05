@@ -40,6 +40,9 @@ cd backend && gradlew.bat installDist
 
 **Публичный деплой (Render.com, Blueprint)**: репозиторий содержит `render.yaml` — в Render: New → Blueprint → выбрать репозиторий; создадутся web-сервис и бесплатная PostgreSQL, схема применится автоматически. Переменные: `SHIGU_JWT_SECRET`, `SHIGU_RECOVERY_SECRET` (генерируются), `SHIGU_DATABASE_URL` (провяжется автоматически; понимаются и `SHIGU_DB_JDBC`, и формат `postgres://`).
 
+**Публичный деплой (Railway, без «сна»)**: репозиторий содержит `railway.toml` — в Railway: New Project → Deploy from GitHub repo; добавьте плагин PostgreSQL и в переменных backend-сервиса задайте:
+`SHIGU_STORAGE=postgres`, `SHIGU_DATABASE_URL=${{Postgres.DATABASE_URL}}`, `SHIGU_JWT_SECRET` и `SHIGU_RECOVERY_SECRET` (длинные случайные строки).
+
 **Режим in-memory (по умолчанию)** — данные в памяти, сбрасываются при рестарте. Ничего устанавливать не нужно:
 
 ```bat
