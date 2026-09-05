@@ -3,7 +3,7 @@
     "passes": [
         {
             "vertex_shader": "minecraft:core/screenquad",
-            "fragment_shader": "shigusdream:post/noisefast",
+            "fragment_shader": "shigusdream:post/noise_fast",
             "inputs": [
                 {
                     "sampler_name": "In",
