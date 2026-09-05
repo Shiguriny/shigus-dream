@@ -93,5 +93,10 @@
   "shigusdream.action.send_chat.name": "Отправить сообщение в чат",
   "shigusdream.action.set_slot.name": "Сменить слот",
   "shigusdream.action.freeze_controls.name": "Заблокировать управление",
-  "shigusdream.action.apply_filter.name": "Экранный фильтр"
+  "shigusdream.action.apply_filter.name": "Экранный фильтр",
+  "shigusdream.action.cinematic.name": "Кинематограф",
+  "shigusdream.action.camera_shake.name": "Тряска камеры",
+  "shigusdream.action.play_ambient.name": "Эмбиент-звук",
+  "shigusdream.action.scare.name": "Пугалка",
+  "shigusdream.action.highlight.name": "Выделить"
 }

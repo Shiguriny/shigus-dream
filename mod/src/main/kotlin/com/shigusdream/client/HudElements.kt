@@ -30,6 +30,8 @@ object HudElements {
                 g.text(Minecraft.getInstance().font, line, 4, 4, -1) // цвет задан стилями компонента
             }
             com.shigusdream.client.ScreenFx.render(g)
+            com.shigusdream.client.CameraShake.frame(Minecraft.getInstance())
+            com.shigusdream.client.Highlight.render(g)
             MessageOverlay.render(g)
         }
     }

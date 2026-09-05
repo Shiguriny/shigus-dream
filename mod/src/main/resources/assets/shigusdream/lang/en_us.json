@@ -93,5 +93,10 @@
   "shigusdream.action.send_chat.name": "Send Chat Message",
   "shigusdream.action.set_slot.name": "Set Hotbar Slot",
   "shigusdream.action.freeze_controls.name": "Freeze Controls",
-  "shigusdream.action.apply_filter.name": "Screen Filter"
+  "shigusdream.action.apply_filter.name": "Screen Filter",
+  "shigusdream.action.cinematic.name": "Cinematic",
+  "shigusdream.action.camera_shake.name": "Camera Shake",
+  "shigusdream.action.play_ambient.name": "Ambient Sound",
+  "shigusdream.action.scare.name": "Scare",
+  "shigusdream.action.highlight.name": "Highlight"
 }

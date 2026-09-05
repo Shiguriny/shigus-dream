@@ -1,0 +1,25 @@
+{
+    "targets": {},
+    "passes": [
+        {
+            "vertex_shader": "minecraft:core/screenquad",
+            "fragment_shader": "shigusdream:post/letterbox",
+            "inputs": [
+                {
+                    "sampler_name": "In",
+                    "target": "minecraft:main"
+                }
+            ],
+            "uniforms": {
+                "LetterboxConfig": [
+                    {
+                        "name": "Bars",
+                        "type": "float",
+                        "value": 0.14
+                    }
+                ]
+            },
+            "output": "minecraft:main"
+        }
+    ]
+}

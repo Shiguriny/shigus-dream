@@ -643,14 +643,17 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
             if (selectedPreset.isBlank()) I18n.component("shigusdream.preset.choose") else Component.literal(selectedPreset),
             selectedPreset.isBlank())
         g.text(font, I18n.component("shigusdream.admin.arguments"), left, 170, C_LABEL)
-        g.enableScissor(left, fieldsTop, right, contentBottom)
-        fieldWidgets.forEachIndexed { index, (field, _) ->
-            val y = fieldsTop + index * FIELD_STEP - contentScroll
-            val label = Component.literal("${field.key} (${field.type.wireName})")
-            if (field.required) label.append(Component.literal(" *").withStyle { it.withColor(TextColor.fromRgb(C_RED)) })
-            g.text(font, label, left, y, C_FIELD)
+        // При открытом списке подписи не рисуем: scissored-слой рендерится выше nextStratum.
+        if (openDropdown == Dropdown.NONE) {
+            g.enableScissor(left, fieldsTop, right, contentBottom)
+            fieldWidgets.forEachIndexed { index, (field, _) ->
+                val y = fieldsTop + index * FIELD_STEP - contentScroll
+                val label = Component.literal("${field.key} (${field.type.wireName})")
+                if (field.required) label.append(Component.literal(" *").withStyle { it.withColor(TextColor.fromRgb(C_RED)) })
+                g.text(font, label, left, y, C_FIELD)
+            }
+            g.disableScissor()
         }
-        g.disableScissor()
         if (contentScroll == 0) editor?.render(g, mouseX, mouseY)
         drawFooter(g)
     }

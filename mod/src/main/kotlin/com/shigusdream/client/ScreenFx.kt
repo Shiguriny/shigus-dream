@@ -35,7 +35,7 @@ object ScreenFx {
             "blur" -> Identifier.fromNamespaceAndPath(ShigusDream.MOD_ID, "blurfx")
             "invert" -> Identifier.withDefaultNamespace("invert")
             "spider_vision" -> Identifier.withDefaultNamespace("spider")
-            "vignette", "vhs", "noise", "noise_fast" -> Identifier.fromNamespaceAndPath(ShigusDream.MOD_ID, effect)
+            "vignette", "vhs", "noise", "noise_fast", "letterbox" -> Identifier.fromNamespaceAndPath(ShigusDream.MOD_ID, effect)
             else -> null
         }
         val hud = when (effect) {
