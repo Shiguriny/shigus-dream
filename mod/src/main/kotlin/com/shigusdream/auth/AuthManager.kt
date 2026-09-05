@@ -126,5 +126,51 @@ class AuthManager(internal val configDir: Path, internal val baseUrl: String) {
         }
     }
 
+    /**
+     * Заливка jar мода на backend (/mod/upload, admin/owner).
+     * При 401 автоматически обновляет access-токен по refresh-токену и повторяет попытку.
+     */
+    fun uploadModJar(jarPath: Path, version: String): Pair<Int, String?> {
+        var attempt = 0
+        while (attempt++ < 2) {
+            val token = tokens.accessToken ?: return -2 to null
+            val result = try {
+                val bytes = Files.readAllBytes(jarPath)
+                val request = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl.trimEnd('/') + "/mod/upload?version=$version"))
+                    .timeout(Duration.ofSeconds(60))
+                    .header("Authorization", "Bearer $token")
+                    .header("Content-Type", "application/octet-stream")
+                    .header("X-Filename", "shigusdream-$version.jar")
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(bytes))
+                    .build()
+                val response = http.send(request, HttpResponse.BodyHandlers.ofString())
+                response.statusCode() to response.body()
+            } catch (e: Exception) {
+                -1 to (e.message ?: e.javaClass.simpleName)
+            }
+            if (result.first == 401 && attempt == 1) {
+                try {
+                    val request = HttpRequest.newBuilder()
+                        .uri(URI.create(baseUrl.trimEnd('/') + "/auth/refresh"))
+                        .timeout(Duration.ofSeconds(10))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(mapOf("refresh_token" to tokens.refreshToken))))
+                        .build()
+                    val response = http.send(request, HttpResponse.BodyHandlers.ofString())
+                    if (response.statusCode() == 200) {
+                        val json = com.google.gson.JsonParser.parseString(response.body()).asJsonObject
+                        saveTokens(tokens.refreshToken, json.get("access_token").asString, tokens.username)
+                        continue // повтор с новым токеном
+                    }
+                } catch (e: Exception) {
+                    ShigusDream.LOGGER.warn("Не удалось обновить токен для /mod/upload", e)
+                }
+            }
+            return result
+        }
+        return -1 to null
+    }
+
     private fun tokensFile(): Path = configDir.resolve("tokens.json")
 }

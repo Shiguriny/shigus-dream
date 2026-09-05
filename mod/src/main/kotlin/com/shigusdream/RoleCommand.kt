@@ -24,6 +24,7 @@ object RoleCommand {
                         )
                         1
                     })
+                    .then(ClientCommands.literal("upload").executes { upload(); 1 })
                     .then(ClientCommands.literal("users").executes { list(it); 1 })
                     .then(
                         ClientCommands.literal("role")
@@ -43,6 +44,35 @@ object RoleCommand {
                     ),
             )
         }
+    }
+
+    /** Заливает собственный jar мода на backend (/shigu upload). */
+    private fun upload() {
+        if (!ShigusDreamClient.isAdminOrOwner) {
+            ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 Команда только для администраторов")
+            return
+        }
+        val container = net.fabricmc.loader.api.FabricLoader.getInstance()
+            .getModContainer(ShigusDream.MOD_ID).orElse(null)
+        // Для jar-мода один из корней контейнера — сам jar-файл.
+        val jar = container?.rootPaths?.firstOrNull {
+            java.nio.file.Files.isRegularFile(it) && it.fileName.toString().endsWith(".jar")
+        }
+        if (jar == null) {
+            ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 Jar не найден (в dev-окружении команда недоступна)")
+            return
+        }
+        val version = ShigusDreamClient.modVersion()
+        Thread {
+            ShigusDreamClient.chatFeedback("§7[Shigu's Dream] Загружаю v$version на backend...")
+            val (status, body) = ShigusDreamClient.auth.uploadModJar(jar, version)
+            when {
+                status == 200 -> ShigusDreamClient.chatFeedback("§a[Shigu's Dream]§7 Обновление залито: §fv$version§7 — игроки получат его при следующем входе в мир")
+                status == 401 -> ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 Токен истёк — переподключитесь (J) и повторите")
+                status == 403 -> ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 Недостаточно прав (нужен admin/owner)")
+                else -> ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 Ошибка загрузки (HTTP $status) ${body?.take(120) ?: ""}")
+            }
+        }.apply { isDaemon = true }.start()
     }
 
     private fun list(ctx: CommandContext<*>) {
