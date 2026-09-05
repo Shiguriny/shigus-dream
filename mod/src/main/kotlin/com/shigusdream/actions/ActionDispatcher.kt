@@ -13,6 +13,7 @@ class ActionDispatcher(
     private val registry: ActionRegistry,
     private val executor: (Runnable) -> Unit,
     private val resultSink: (requestId: String, action: String, executed: Boolean, error: String?) -> Unit,
+    private val isAllowed: (String) -> Boolean = { true },
 ) {
     private val recentRequestIds = ArrayDeque<String>()
     private val lock = Any()
@@ -32,6 +33,12 @@ class ActionDispatcher(
         if (!deduplicate(requestId)) {
             ShigusDream.LOGGER.info("Дубликат request_id {} отклонён", requestId)
             resultSink(requestId, actionId, false, "duplicate_request")
+            return
+        }
+
+        if (!isAllowed(actionId)) {
+            ShigusDream.LOGGER.info("Action {} blocked by client safety settings", actionId)
+            resultSink(requestId, actionId, false, "blocked_by_client")
             return
         }
 

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.shigusdream'
-version = '0.4.0'
+version = file('../VERSION').text.trim()
 
 repositories {
     mavenCentral()

@@ -3,7 +3,9 @@ plugins {
     id 'net.fabricmc.fabric-loom' version '1.17.20'
 }
 
-version = '0.4.2'
+// Единый источник версии мода. Каждая самостоятельная партия изменений
+// получает следующий patch-релиз: 0.4.4, 0.4.5 и т.д.
+version = file('../VERSION').text.trim()
 group = 'com.shigusdream'
 
 base {

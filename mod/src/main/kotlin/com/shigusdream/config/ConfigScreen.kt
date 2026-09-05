@@ -2,9 +2,10 @@ package com.shigusdream.config
 
 import com.shigusdream.ShigusDream
 import com.shigusdream.ShigusDreamClient
+import com.shigusdream.admin.UiTextField
+import com.shigusdream.client.I18n
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
 import net.fabricmc.loader.api.FabricLoader
@@ -14,7 +15,7 @@ import net.fabricmc.loader.api.FabricLoader
  * требование admin_wand, ping, recoverySecret. Сохраняет в shigusdream.json.
  */
 class ConfigScreen(private val parent: Screen? = null) :
-    Screen(Minecraft.getInstance(), Minecraft.getInstance().font, Component.literal("Shigu's Dream — Настройки")) {
+    Screen(Minecraft.getInstance(), Minecraft.getInstance().font, I18n.component("shigusdream.config.title")) {
 
     private companion object {
         const val LEFT = 8
@@ -23,10 +24,10 @@ class ConfigScreen(private val parent: Screen? = null) :
         const val C_WHITE = -1
     }
 
-    private var urlBox: EditBox? = null
-    private var pingBox: EditBox? = null
-    private var secretBox: EditBox? = null
-    private var statusLine: String = ""
+    private var urlBox: UiTextField? = null
+    private var pingBox: UiTextField? = null
+    private var secretBox: UiTextField? = null
+    private var statusLine: Component? = null
     private var statusColor: Int = 0xFF55FF55.toInt()
 
     // Состояния тогглов (виджеты меняют их напрямую)
@@ -35,56 +36,60 @@ class ConfigScreen(private val parent: Screen? = null) :
     private var requireAdminWand: Boolean = ShigusDreamClient.config.requireAdminWand
 
     override fun init() {
+        clearWidgets()
         val cfg = ShigusDreamClient.config
 
-        urlBox = EditBox(font, LEFT, 36, W, 16, Component.literal("backendUrl")).apply {
+        urlBox = UiTextField(font, LEFT + 5, 41, W - 10, 10, Component.literal("backendUrl")).apply {
             setMaxLength(256)
             setValue(cfg.backendUrl)
-            setHint(Component.literal("https://shigusdream-backend.onrender.com"))
+            setHint(Component.literal("https://backend.example.com"))
         }
         addRenderableWidget(urlBox!!)
 
         addRenderableWidget(
-            com.shigusdream.admin.UiToggle(LEFT, 62, W, 16, "Автоподключение при входе в мир", autoConnect) { v -> autoConnect = v },
+            com.shigusdream.admin.UiToggle(LEFT, 64, W, 16, I18n.component("shigusdream.config.auto_connect"), autoConnect) { v -> autoConnect = v },
         )
         addRenderableWidget(
-            com.shigusdream.admin.UiToggle(LEFT, 86, W, 16, "Показывать строку статуса (HUD)", showHud) { v -> showHud = v },
+            com.shigusdream.admin.UiToggle(LEFT, 88, W, 16, I18n.component("shigusdream.config.show_hud"), showHud) { v -> showHud = v },
         )
         addRenderableWidget(
-            com.shigusdream.admin.UiToggle(LEFT, 110, W, 16, "Панель только с admin_wand", requireAdminWand) { v -> requireAdminWand = v },
+            com.shigusdream.admin.UiToggle(LEFT, 112, W, 16, I18n.component("shigusdream.config.require_wand"), requireAdminWand) { v -> requireAdminWand = v },
         )
 
-        pingBox = EditBox(font, LEFT, 146, 60, 16, Component.literal("ping")).apply {
+        addRenderableWidget(com.shigusdream.admin.UiButton(LEFT, 136, W, 20,
+            I18n.component("shigusdream.config.safety"), { Minecraft.getInstance().setScreen(SafetyScreen(this)) }))
+
+        pingBox = UiTextField(font, LEFT + 5, 177, 50, 10, Component.literal("ping")).apply {
             setMaxLength(3)
             setValue(cfg.pingIntervalSeconds.toString())
         }
         addRenderableWidget(pingBox!!)
 
-        secretBox = EditBox(font, LEFT, 180, W, 16, Component.literal("recoverySecret")).apply {
+        secretBox = UiTextField(font, LEFT + 5, 213, W - 10, 10, Component.literal("recoverySecret")).apply {
             setMaxLength(128)
             setValue(cfg.recoverySecret)
-            setHint(Component.literal("SHIGU_RECOVERY_SECRET с сервера"))
+            setHint(I18n.component("shigusdream.config.secret_hint"))
         }
         addRenderableWidget(secretBox!!)
 
         addRenderableWidget(
-            com.shigusdream.admin.UiButton(LEFT, height - 50, W, 20, "Сохранить", { saveAndClose() }, true),
+            com.shigusdream.admin.UiButton(LEFT, height - 50, W, 20, I18n.component("shigusdream.common.save"), { saveAndClose() }, true),
         )
         addRenderableWidget(
-            com.shigusdream.admin.UiButton(LEFT, height - 26, W, 20, "Назад", { onClose() }),
+            com.shigusdream.admin.UiButton(LEFT, height - 26, W, 20, I18n.component("shigusdream.common.back"), { onClose() }),
         )
     }
 
     private fun saveAndClose() {
         val url = urlBox?.getValue()?.trim().orEmpty()
         if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("ws://") && !url.startsWith("wss://")) {
-            statusLine = "Адрес должен начинаться с http(s):// или ws(s)://"
+            statusLine = I18n.component("shigusdream.config.invalid_url")
             statusColor = 0xFFFF5555.toInt()
             return
         }
         val ping = pingBox?.getValue()?.trim()?.toIntOrNull() ?: ShigusDreamClient.config.pingIntervalSeconds
         if (ping !in 5..120) {
-            statusLine = "Ping-интервал: 5..120 секунд"
+            statusLine = I18n.component("shigusdream.config.invalid_ping")
             statusColor = 0xFFFF5555.toInt()
             return
         }
@@ -104,7 +109,7 @@ class ConfigScreen(private val parent: Screen? = null) :
         ShigusDream.LOGGER.info("Настройки сохранены; backend={}", url)
 
         if (url != oldUrl) {
-            statusLine = "Сохранено — переподключение..."
+            statusLine = I18n.component("shigusdream.config.reconnecting")
             statusColor = 0xFF55FF55.toInt()
             ShigusDreamClient.connection.updateUrl(ModConfig.websocketUrl(url))
             ShigusDreamClient.connection.reconnect()
@@ -119,11 +124,11 @@ class ConfigScreen(private val parent: Screen? = null) :
         val versionLine = "[Shigu's Dream v${ShigusDreamClient.modVersion()}]"
         g.text(font, Component.literal(versionLine), width - font.width(versionLine) - 4, 6, 0xFFB088FF.toInt())
 
-        g.text(font, Component.literal("Адрес backend"), LEFT, 26, C_LABEL)
-        g.text(font, Component.literal("Ping-интервал, с (5..120)"), LEFT, 136, C_LABEL)
-        g.text(font, Component.literal("Секрет восстановления (необязательно)"), LEFT, 170, C_LABEL)
-        if (statusLine.isNotBlank()) {
-            g.text(font, Component.literal(statusLine), LEFT, height - 84, statusColor)
+        g.text(font, I18n.component("shigusdream.config.backend_url"), LEFT, 26, C_LABEL)
+        g.text(font, I18n.component("shigusdream.config.ping"), LEFT, 163, C_LABEL)
+        g.text(font, I18n.component("shigusdream.config.secret"), LEFT, 199, C_LABEL)
+        statusLine?.let {
+            g.text(font, it, LEFT, height - 84, statusColor)
         }
     }
 

@@ -13,12 +13,15 @@ class UiToggle(
     y: Int,
     width: Int,
     height: Int,
-    label: String,
+    label: Component,
     var checked: Boolean,
     private val onChange: (Boolean) -> Unit,
-) : AbstractWidget(x, y, width, height, Component.literal(label)) {
+) : AbstractWidget(x, y, width, height, label) {
 
-    private val labelComponent = Component.literal(label)
+    private val labelComponent = label
+
+    constructor(x: Int, y: Int, width: Int, height: Int, label: String, checked: Boolean, onChange: (Boolean) -> Unit) :
+        this(x, y, width, height, Component.literal(label), checked, onChange)
 
     override fun extractWidgetRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val font = Minecraft.getInstance().font
@@ -38,10 +41,11 @@ class UiToggle(
         // Кружок состояния
         val knobX = if (checked) tx + trackW - 10 else tx + 2
         g.fill(knobX, ty + 2, knobX + 8, ty + trackH - 2, 0xFFFFFFFF.toInt())
+        val stateText = Component.translatable(if (checked) "shigusdream.common.on" else "shigusdream.common.off")
         g.text(
             font,
-            Component.literal(if (checked) "вкл" else "выкл"),
-            tx - font.width("выкл") - 6, ty + 2,
+            stateText,
+            tx - font.width(stateText) - 6, ty + 2,
             0xFF909090.toInt(),
         )
     }

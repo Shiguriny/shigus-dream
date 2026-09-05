@@ -2,7 +2,10 @@ package com.shigusdream
 
 import com.google.gson.JsonObject
 import com.shigusdream.actions.ActionDispatcher
+import com.shigusdream.actions.ActionContext
+import com.shigusdream.actions.ActionResult
 import com.shigusdream.actions.ActionRegistry
+import com.shigusdream.actions.ActionValidator
 import com.shigusdream.actions.impl.ApplyEffectAction
 import com.shigusdream.actions.impl.ApplyFilterAction
 import com.shigusdream.actions.impl.FreezeControlsAction
@@ -13,6 +16,9 @@ import com.shigusdream.actions.impl.SetFovAction
 import com.shigusdream.actions.impl.SetSlotAction
 import com.shigusdream.actions.impl.ShowMessageAction
 import com.shigusdream.admin.AdminScreen
+import com.shigusdream.admin.AdminDataStore
+import com.shigusdream.admin.CommandHistory
+import com.shigusdream.admin.ScenarioRunner
 import com.shigusdream.auth.AuthManager
 import com.shigusdream.auth.confirmLink
 import com.shigusdream.client.HudElements
@@ -75,6 +81,8 @@ object ShigusDreamClient : ClientModInitializer {
         auth = AuthManager(configDir.resolve("shigusdream"), config.backendUrl)
         auth.load()
         com.shigusdream.admin.ScenarioStore.init(configDir)
+        AdminDataStore.init(configDir)
+        CommandHistory.init(configDir)
 
         registry.register(ShowMessageAction)
         registry.register(NotificationAction)
@@ -101,6 +109,7 @@ object ShigusDreamClient : ClientModInitializer {
             resultSink = { requestId, action, executed, error ->
                 connection.sendResult(requestId, action, executed, error)
             },
+            isAllowed = { action -> action !in config.blockedActions },
         )
         ShigusDreamRuntime.dispatcher = dispatcher
 
@@ -111,6 +120,9 @@ object ShigusDreamClient : ClientModInitializer {
             KeyMapping("key.shigusdream.status", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, adminCategory),
         )
 
+        ClientTickEvents.START_CLIENT_TICK.register { client ->
+            com.shigusdream.client.ClientControls.beginTick(client)
+        }
         ClientTickEvents.END_CLIENT_TICK.register { client -> onEndTick(client) }
         HudElements.register()
 
@@ -131,6 +143,11 @@ object ShigusDreamClient : ClientModInitializer {
     // ------------------------------------------------------------------ tick
 
     private fun onEndTick(client: Minecraft) {
+        if (com.shigusdream.client.ClientControls.isFrozen) {
+            // Пользовательские бинды мода также не должны накапливаться во время freeze.
+            while (openAdminKey.consumeClick()) {}
+            while (statusKey.consumeClick()) {}
+        }
         while (openAdminKey.consumeClick()) {
             val player = client.player ?: continue
             if (config.requireAdminWand && !CustomDataReader.isAdminWand(player.getMainHandItem())) {
@@ -164,7 +181,7 @@ object ShigusDreamClient : ClientModInitializer {
         }
         MessageOverlay.tick()
         com.shigusdream.client.ClientEffects.tick()
-        com.shigusdream.client.ClientControls.tick(client)
+        com.shigusdream.client.ClientControls.endTick(client)
         com.shigusdream.client.ScreenFx.tick(client)
         com.shigusdream.admin.ScenarioRunner.tick()
     }
@@ -269,6 +286,8 @@ object ShigusDreamClient : ClientModInitializer {
         }
 
         override fun onActionResult(requestId: String, action: String, status: String, error: String?) {
+            CommandHistory.complete(requestId, status, error)
+            ScenarioRunner.onResult(requestId, status, error)
             lastResultText = if (status == "executed") "✔ $action выполнено" else "✖ ${error ?: "failed"}"
             chatFeedback("§7[Shigu's Dream] $lastResultText")
         }
@@ -294,6 +313,32 @@ object ShigusDreamClient : ClientModInitializer {
         client.execute {
             client.gui.chat.addClientSystemMessage(Component.literal(message))
         }
+    }
+
+    /** Sends one ordinary backend command per direct user or group member. */
+    fun sendAction(targetSelection: String, action: String, args: JsonObject): List<String> {
+        if (!connection.isOnline) return emptyList()
+        return AdminDataStore.resolveTargets(targetSelection).distinct().map { target ->
+            connection.sendExecute(target, action, args.deepCopy()).also { requestId ->
+                CommandHistory.record(requestId, target, action, args)
+            }
+        }
+    }
+
+    /** Executes a validated action on this client without a backend round-trip. */
+    fun previewAction(actionId: String, args: JsonObject): ActionResult {
+        val action = registry.byId(actionId) ?: return ActionResult.fail("unknown_action")
+        val errors = ActionValidator.validate(action.schema, args)
+        if (errors.isNotEmpty()) return ActionResult.fail("invalid_arguments: ${errors.joinToString("; ")}")
+        val requestId = "local-${java.util.UUID.randomUUID()}"
+        val result = try {
+            action.execute(null, ActionContext(requestId, args.deepCopy()))
+        } catch (e: Exception) {
+            ActionResult.fail("execution_error: ${e.message ?: e.javaClass.simpleName}")
+        }
+        CommandHistory.record(requestId, auth.tokens.username ?: "local", actionId, args, local = true,
+            status = if (result.executed) "executed" else "failed", error = result.error)
+        return result
     }
 
     fun modVersion(): String =

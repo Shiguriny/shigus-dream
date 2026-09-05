@@ -15,12 +15,13 @@ class UiButton(
     y: Int,
     width: Int,
     height: Int,
-    label: String,
+    label: Component,
     private val onPress: () -> Unit,
     private val accent: Boolean = false,
-) : AbstractWidget(x, y, width, height, Component.literal(label)) {
+) : AbstractWidget(x, y, width, height, label) {
 
-    private val labelComponent = Component.literal(label)
+    constructor(x: Int, y: Int, width: Int, height: Int, label: String, onPress: () -> Unit, accent: Boolean = false) :
+        this(x, y, width, height, Component.literal(label), onPress, accent)
 
     override fun extractWidgetRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val bg = when {
@@ -36,7 +37,7 @@ class UiButton(
         }
         val font = Minecraft.getInstance().font
         val color = if (active) 0xFFFFFFFF.toInt() else 0xFF707070.toInt()
-        g.text(font, labelComponent, x + (width - font.width(labelComponent)) / 2, y + (height - 8) / 2, color)
+        g.text(font, message, x + (width - font.width(message)) / 2, y + (height - 8) / 2, color)
     }
 
     override fun updateWidgetNarration(narration: NarrationElementOutput) {}

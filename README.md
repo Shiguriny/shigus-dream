@@ -27,7 +27,7 @@ Backend определяет **кто, кому и что** отправляет
 ## Сборка
 
 ```bat
-:: Мод (jar появится в mod\build\libs\shigusdream-0.1.0.jar)
+:: Мод (jar появится в mod\build\libs\shigusdream-0.4.5.jar)
 cd mod && gradlew.bat build
 
 :: Backend (дистрибутив в backend\build\install\backend)
@@ -61,7 +61,7 @@ docker compose up -d
 ## Запуск мода
 
 1. Установите Fabric Loader 0.19.3+ для Minecraft **26.1.2**, положите в `mods/`:
-   - `shigusdream-0.1.0.jar`
+   - `shigusdream-0.4.5.jar`
    - Fabric API и fabric-language-kotlin (Loom'овский `runClient` подтягивает их сам).
 2. Запустите игру. В `config/shigusdream.json` укажите `backendUrl` (по умолчанию `http://localhost:8080`), `autoConnect`, `showHud`, `requireAdminWand`.
 3. При первом подключении мод попросит backend выдать **одноразовый код привязки** и покажет его в чате.

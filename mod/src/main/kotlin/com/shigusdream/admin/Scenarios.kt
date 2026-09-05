@@ -15,12 +15,17 @@ data class ScenarioStep(
     val action: String,
     val args: JsonObject,
     var delay: Int = 20,
+    var delayBefore: Int = 0,
+    var waitForResult: Boolean = true,
+    var stopOnError: Boolean = true,
+    var repeat: Int = 1,
 )
 
 /** Сценарий — именованная цепочка шагов. */
 data class Scenario(
     val name: String,
     val steps: MutableList<ScenarioStep>,
+    var loops: Int = 1,
 )
 
 /**
@@ -54,9 +59,13 @@ object ScenarioStore {
                             action = so.get("action").asString,
                             args = so.getAsJsonObject("args") ?: JsonObject(),
                             delay = so.get("delay")?.asInt ?: 20,
+                            delayBefore = so.get("delay_before")?.asInt ?: 0,
+                            waitForResult = so.get("wait_for_result")?.asBoolean ?: true,
+                            stopOnError = so.get("stop_on_error")?.asBoolean ?: true,
+                            repeat = so.get("repeat")?.asInt ?: 1,
                         )
                     }
-                    scenarios += Scenario(o.get("name").asString, steps)
+                    scenarios += Scenario(o.get("name").asString, steps, o.get("loops")?.asInt ?: 1)
                 }
             }
         } catch (e: Exception) {
@@ -71,6 +80,7 @@ object ScenarioStore {
             for (scenario in scenarios) {
                 val so = JsonObject()
                 so.addProperty("name", scenario.name)
+                so.addProperty("loops", scenario.loops)
                 val steps = com.google.gson.JsonArray()
                 for (step in scenario.steps) {
                     val sto = JsonObject()
@@ -78,6 +88,10 @@ object ScenarioStore {
                     sto.addProperty("action", step.action)
                     sto.add("args", step.args)
                     sto.addProperty("delay", step.delay)
+                    sto.addProperty("delay_before", step.delayBefore)
+                    sto.addProperty("wait_for_result", step.waitForResult)
+                    sto.addProperty("stop_on_error", step.stopOnError)
+                    sto.addProperty("repeat", step.repeat)
                     steps.add(sto)
                 }
                 so.add("steps", steps)
@@ -114,18 +128,28 @@ object ScenarioStore {
 object ScenarioRunner {
     private var ticksLeft = 0
     private var stepIndex = 0
+    private var loopIndex = 0
+    private var repeatIndex = 0
     private var runningScenario: Scenario? = null
+    private val awaiting = linkedSetOf<String>()
+    private var waitingFailed = false
 
     val isRunning: Boolean get() = runningScenario != null
     val runningName: String? get() = runningScenario?.name
     val progressLine: String?
-        get() = runningScenario?.let { "Выполнение «${it.name}»: шаг ${stepIndex + 1}/${it.steps.size}" }
+        get() = runningScenario?.let {
+            "${it.name}: ${stepIndex + 1}/${it.steps.size}, ${loopIndex + 1}/${it.loops}"
+        }
 
     fun start(scenario: Scenario) {
         if (scenario.steps.isEmpty()) return
         runningScenario = scenario
         stepIndex = 0
-        ticksLeft = 1
+        loopIndex = 0
+        repeatIndex = 0
+        awaiting.clear()
+        waitingFailed = false
+        ticksLeft = scenario.steps.first().delayBefore.coerceAtLeast(1)
         ShigusDreamClient.chatFeedback("§b[Shigu's Dream]§7 Запуск сценария «${scenario.name}» (${scenario.steps.size} шагов)")
     }
 
@@ -134,21 +158,72 @@ object ScenarioRunner {
             ShigusDreamClient.chatFeedback("§7[Shigu's Dream] Сценарий остановлен")
         }
         runningScenario = null
+        awaiting.clear()
     }
 
     fun tick() {
         val scenario = runningScenario ?: return
+        if (awaiting.isNotEmpty()) return
         if (--ticksLeft > 0) return
 
         val step = scenario.steps.getOrNull(stepIndex)
         if (step == null) {
-            ShigusDreamClient.chatFeedback("§a[Shigu's Dream]§7 Сценарий «${scenario.name}» выполнен")
-            runningScenario = null
+            loopIndex++
+            if (loopIndex < scenario.loops.coerceIn(1, 100)) {
+                stepIndex = 0
+                repeatIndex = 0
+                ticksLeft = scenario.steps.first().delayBefore.coerceAtLeast(1)
+            } else {
+                ShigusDreamClient.chatFeedback("§a[Shigu's Dream]§7 Сценарий «${scenario.name}» выполнен")
+                runningScenario = null
+            }
             return
         }
-        val requestId = ShigusDreamClient.connection.sendExecute(step.target, step.action, step.args)
-        ShigusDream.LOGGER.info("scenario[{}] step {} -> {} (request_id={})", scenario.name, stepIndex + 1, step.action, requestId)
-        stepIndex++
-        ticksLeft = step.delay.coerceAtLeast(1)
+        val requestIds = ShigusDreamClient.sendAction(step.target, step.action, step.args)
+        ShigusDream.LOGGER.info("scenario[{}] step {} -> {} (request_ids={})", scenario.name, stepIndex + 1, step.action, requestIds)
+        if (requestIds.isEmpty()) {
+            if (step.stopOnError) {
+                failScenario("no_targets")
+                return
+            }
+            advance(step)
+        } else if (step.waitForResult) {
+            awaiting += requestIds
+            waitingFailed = false
+        } else {
+            advance(step)
+        }
+    }
+
+    fun onResult(requestId: String, status: String, error: String?) {
+        if (!awaiting.remove(requestId)) return
+        if (status != "executed") waitingFailed = true
+        if (awaiting.isNotEmpty()) return
+        val scenario = runningScenario ?: return
+        val step = scenario.steps.getOrNull(stepIndex) ?: return
+        if (waitingFailed && step.stopOnError) {
+            failScenario(error ?: "step_failed")
+            return
+        }
+        advance(step)
+    }
+
+    private fun advance(step: ScenarioStep) {
+        repeatIndex++
+        if (repeatIndex >= step.repeat.coerceIn(1, 100)) {
+            repeatIndex = 0
+            stepIndex++
+            val nextBefore = runningScenario?.steps?.getOrNull(stepIndex)?.delayBefore ?: 0
+            ticksLeft = (step.delay + nextBefore).coerceAtLeast(1)
+        } else {
+            ticksLeft = step.delay.coerceAtLeast(1)
+        }
+    }
+
+    private fun failScenario(error: String) {
+        val name = runningScenario?.name ?: return
+        ShigusDreamClient.chatFeedback("§c[Shigu's Dream]§7 Сценарий «$name» остановлен: $error")
+        runningScenario = null
+        awaiting.clear()
     }
 }

@@ -11,8 +11,8 @@ import com.shigusdream.client.ScreenFx
 
 /**
  * shigusdream:apply_filter — экранный пост-эффект на клиенте цели.
- * Шейдерные (grayscale, blur, invert, spider_vision, vignette, vhs, noise)
- * и HUD-оверлейные (darkening, sleepy, color_filter, damaged_vision).
+ * Шейдерные (grayscale, blur, invert, spider_vision, vignette, vhs)
+ * и HUD-оверлейные (darkening, sleepy, color_filter, damaged_vision, noise).
  */
 object ApplyFilterAction : ClientAction {
     override val id = "shigusdream:apply_filter"

@@ -12,6 +12,9 @@
   "icon": "assets/shigusdream/icon.png",
   "environment": "client",
   "accessWidener": "shigusdream.accesswidener",
+  "mixins": [
+    "shigusdream.mixins.json"
+  ],
   "entrypoints": {
     "client": [
       { "adapter": "kotlin", "value": "com.shigusdream.ShigusDreamClient" }
