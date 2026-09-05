@@ -55,9 +55,14 @@ object Highlight {
             val projected = runCatching {
                 mc.gameRenderer.projectPointToScreen(marker.pos)
             }.getOrNull() ?: continue
-            val sx = projected.x
-            val sy = projected.y
-            if (sx < 0 || sy < 0 || sx > g.guiWidth() || sy > g.guiHeight()) continue
+
+            // projectPointToScreen возвращает NDC: x, y в диапазоне [-1..1], y направлен вверх.
+            val ndcX = projected.x
+            val ndcY = projected.y
+            if (ndcX < -1.2 || ndcX > 1.2 || ndcY < -1.2 || ndcY > 1.2) continue
+
+            val sx = (ndcX + 1.0) / 2.0 * g.guiWidth()
+            val sy = (1.0 - ndcY) / 2.0 * g.guiHeight()
 
             val size = 28
             val color = 0xFF000000.toInt() or marker.color
