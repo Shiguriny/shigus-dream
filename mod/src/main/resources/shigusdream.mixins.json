@@ -4,7 +4,8 @@
   "package": "com.shigusdream.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "MouseHandlerMixin"
+    "MouseHandlerMixin",
+    "MultiPlayerGameModeMixin"
   ],
   "injectors": {
     "defaultRequire": 1
