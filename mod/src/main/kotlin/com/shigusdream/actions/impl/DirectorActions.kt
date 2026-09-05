@@ -174,7 +174,7 @@ object HighlightAction : ClientAction {
                 if (parts.size != 3) return ActionResult.fail("pos must be 'x y z'")
                 com.shigusdream.client.Highlight.addBlock(
                     id = "block:${parts.joinToString(",")}",
-                    pos = net.minecraft.world.phys.Vec3(parts[0] + 0.5, parts[1] + 0.5, parts[2] + 0.5),
+                    center = net.minecraft.world.phys.Vec3(parts[0] + 0.5, parts[1] + 0.5, parts[2] + 0.5),
                     color = color,
                     ticks = duration,
                 )

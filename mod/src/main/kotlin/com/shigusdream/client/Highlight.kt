@@ -9,21 +9,22 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Выделение для цели: игроки подсвечиваются ванильным glow (миксин в shouldEntityAppearGlowing),
- * блоки — маркерами на HUD (проекция точки мира на экран).
+ * блоки — проекцией каркаса куба на экран (12 рёбер по 8 спроецированным углам).
+ * Блоки за камерой не рисуются (NDC-зеркало давало артефакт «на экране спереди»).
  */
 object Highlight {
 
-    class BlockMarker(val pos: Vec3, val color: Int, var ticksLeft: Int)
+    class BlockMarker(val center: Vec3, val color: Int, var ticksLeft: Int)
 
-    private val glowingPlayers = ConcurrentHashMap<UUID, Int>() // uuid -> ticksLeft
+    private val glowingPlayers = ConcurrentHashMap<UUID, Int>()
     private val blockMarkers = ConcurrentHashMap<String, BlockMarker>()
 
     fun addGlow(uuid: UUID, ticks: Int) {
         glowingPlayers[uuid] = ticks.coerceAtLeast(1)
     }
 
-    fun addBlock(id: String, pos: Vec3, color: Int, ticks: Int) {
-        blockMarkers[id] = BlockMarker(pos, color, ticks.coerceAtLeast(1))
+    fun addBlock(id: String, center: Vec3, color: Int, ticks: Int) {
+        blockMarkers[id] = BlockMarker(center, color, ticks.coerceAtLeast(1))
     }
 
     fun isGlowing(uuid: UUID): Boolean = glowingPlayers.containsKey(uuid)
@@ -46,33 +47,69 @@ object Highlight {
         blockMarkers.clear()
     }
 
-    /** Вызывается из HUD-фазы: рисует маркеры блоков. */
+    /** Проекция точки мира в пиксели GUI; null, если вне экрана. */
+    private fun project(mc: Minecraft, g: GuiGraphicsExtractor, point: Vec3): Pair<Double, Double>? {
+        val ndc = runCatching {
+            mc.gameRenderer.projectPointToScreen(point)
+        }.getOrNull() ?: return null
+        if (ndc.x < -1.2 || ndc.x > 1.2 || ndc.y < -1.2 || ndc.y > 1.2) return null
+        val sx = (ndc.x + 1.0) / 2.0 * g.guiWidth()
+        val sy = (1.0 - ndc.y) / 2.0 * g.guiHeight()
+        return sx to sy
+    }
+
+    private fun drawLine(g: GuiGraphicsExtractor, a: Pair<Double, Double>, b: Pair<Double, Double>, color: Int) {
+        val steps = Math.max(Math.abs(b.first - a.first), Math.abs(b.second - a.second)).toInt().coerceAtLeast(1)
+        for (i in 0..steps) {
+            val t = i.toDouble() / steps
+            val x = a.first + (b.first - a.first) * t
+            val y = a.second + (b.second - a.second) * t
+            g.fill(x.toInt(), y.toInt(), x.toInt() + 1, y.toInt() + 1, color)
+        }
+    }
+
+    /** Вызывается из HUD-фазы: рисует каркасы блоков. */
     fun render(g: GuiGraphicsExtractor) {
         if (blockMarkers.isEmpty()) return
         val mc = Minecraft.getInstance()
         val font = mc.font
+        val player = mc.player ?: return
+        val look = player.getViewVector(1.0f)
+
         for (marker in blockMarkers.values) {
-            val projected = runCatching {
-                mc.gameRenderer.projectPointToScreen(marker.pos)
-            }.getOrNull() ?: continue
+            // Блок за камерой — не рисуем.
+            val toBlock = marker.center.subtract(player.getEyePosition(1.0f))
+            if (toBlock.dot(look) < 0) continue
 
-            // projectPointToScreen возвращает NDC: x, y в диапазоне [-1..1], y направлен вверх.
-            val ndcX = projected.x
-            val ndcY = projected.y
-            if (ndcX < -1.2 || ndcX > 1.2 || ndcY < -1.2 || ndcY > 1.2) continue
+            val h = 0.5
+            val corners = listOf(
+                Vec3(marker.center.x - h, marker.center.y - h, marker.center.z - h),
+                Vec3(marker.center.x + h, marker.center.y - h, marker.center.z - h),
+                Vec3(marker.center.x - h, marker.center.y + h, marker.center.z - h),
+                Vec3(marker.center.x + h, marker.center.y + h, marker.center.z - h),
+                Vec3(marker.center.x - h, marker.center.y - h, marker.center.z + h),
+                Vec3(marker.center.x + h, marker.center.y - h, marker.center.z + h),
+                Vec3(marker.center.x - h, marker.center.y + h, marker.center.z + h),
+                Vec3(marker.center.x + h, marker.center.y + h, marker.center.z + h),
+            ).map { project(mc, g, it) }
+            if (corners.any { it == null }) continue
+            @Suppress("UNCHECKED_CAST")
+            val pts = corners as List<Pair<Double, Double>>
 
-            val sx = (ndcX + 1.0) / 2.0 * g.guiWidth()
-            val sy = (1.0 - ndcY) / 2.0 * g.guiHeight()
-
-            val size = 28
+            val edges = listOf(
+                0 to 1, 1 to 3, 3 to 2, 2 to 0,
+                4 to 5, 5 to 7, 7 to 6, 6 to 4,
+                0 to 4, 1 to 5, 2 to 6, 3 to 7,
+            )
             val color = 0xFF000000.toInt() or marker.color
-            g.fill((sx - size / 2).toInt(), (sy - size / 2).toInt(), (sx + size / 2).toInt(), (sy - size / 2).toInt() + 2, color)
-            g.fill((sx - size / 2).toInt(), (sy + size / 2).toInt() - 2, (sx + size / 2).toInt(), (sy + size / 2).toInt(), color)
-            g.fill((sx - size / 2).toInt(), (sy - size / 2).toInt(), (sx - size / 2).toInt() + 2, (sy + size / 2).toInt(), color)
-            g.fill((sx + size / 2).toInt() - 2, (sy - size / 2).toInt(), (sx + size / 2).toInt(), (sy + size / 2).toInt(), color)
+            for ((a, b) in edges) {
+                drawLine(g, pts[a], pts[b], color)
+            }
 
-            val dist = mc.player?.let { it.position().distanceTo(marker.pos) } ?: 0.0
-            g.text(font, Component.literal("${"%.0f".format(dist)} м"), sx.toInt() + size / 2 + 2, sy.toInt() - 4, 0xFFFFFFFF.toInt())
+            // Подпись расстояния у верхнего левого переднего угла
+            val top = pts[6]
+            val dist = player.position().distanceTo(marker.center)
+            g.text(font, Component.literal("${"%.0f".format(dist)} м"), top.first.toInt() + 3, top.second.toInt() - 8, 0xFFFFFFFF.toInt())
         }
     }
 }

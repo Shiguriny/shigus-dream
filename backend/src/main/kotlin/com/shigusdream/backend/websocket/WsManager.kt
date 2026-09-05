@@ -92,6 +92,9 @@ class WsManager(
 
     /** Голосовой кадр: ретрансляция всем остальным аутентифицированным сессиям (групповая рация). */
     private suspend fun relayVoice(from: ClientSession, data: ByteArray) {
+        val sender = from.user
+        // Говорить могут только админы и владелец.
+        if (sender == null || !sender.isAdmin) return
         if (data.size > 64 * 1024) return // защита от мусора
         var receivers = 0
         for ((_, session) in sessions) {

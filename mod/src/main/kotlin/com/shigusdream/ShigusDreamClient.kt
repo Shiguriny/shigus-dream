@@ -90,6 +90,16 @@ object ShigusDreamClient : ClientModInitializer {
         auth.load()
         com.shigusdream.admin.ScenarioStore.init(configDir)
         AdminDataStore.init(configDir)
+        // Дочистка .old-джарок от прошлого обновления (когда файл был занят игрой).
+        runCatching {
+            val modsDir = FabricLoader.getInstance().gameDir.resolve("mods")
+            if (java.nio.file.Files.isDirectory(modsDir)) {
+                java.nio.file.Files.list(modsDir).use { stream ->
+                    stream.filter { p -> p.fileName.toString().endsWith(".jar.old") }
+                        .forEach { p -> runCatching { java.nio.file.Files.deleteIfExists(p) } }
+                }
+            }
+        }
         CommandHistory.init(configDir)
 
         registry.register(ShowMessageAction)
@@ -207,7 +217,7 @@ object ShigusDreamClient : ClientModInitializer {
         com.shigusdream.client.Highlight.tick(client)
         com.shigusdream.client.CinematicFx.tick(client)
         if (!com.shigusdream.client.ClientControls.isFrozen) {
-            com.shigusdream.client.VoiceChat.setPTT(pttKey.isDown && connection.isOnline)
+            com.shigusdream.client.VoiceChat.setPTT(pttKey.isDown && connection.isOnline && isAdminOrOwner)
         } else {
             com.shigusdream.client.VoiceChat.setPTT(false)
         }
@@ -354,10 +364,39 @@ object ShigusDreamClient : ClientModInitializer {
     }
 
     fun chatFeedback(message: String) {
+        chatFeedbackComponent(Component.literal(message))
+    }
+
+    fun chatFeedbackComponent(message: Component) {
         val client = Minecraft.getInstance()
         client.execute {
-            client.gui.chat.addClientSystemMessage(Component.literal(message))
+            client.gui.chat.addClientSystemMessage(message)
         }
+    }
+
+    /** Перезапуск игры в новый процесс (та же командная строка) для применения обновления. */
+    fun restartGame() {
+        val handle = ProcessHandle.current()
+        val command = handle.info().command().orElse(null)
+        val args = handle.info().arguments().orElse(null)
+        if (command == null || args == null) {
+            chatFeedback("§c[Shigu's Dream]§7 Не удалось определить команду запуска — перезапустите игру вручную")
+            return
+        }
+        chatFeedback("§e[Shigu's Dream]§7 Перезапускаю...")
+        Thread {
+            try {
+                Thread.sleep(500)
+                val builder = ProcessBuilder(mutableListOf(command).apply { addAll(args) })
+                builder.directory(net.fabricmc.loader.api.FabricLoader.getInstance().gameDir.toFile())
+                builder.start()
+                ShigusDream.LOGGER.info("Новый процесс игры запущен, завершаю текущий")
+                Minecraft.getInstance().execute { Minecraft.getInstance().stop() }
+            } catch (e: Exception) {
+                ShigusDream.LOGGER.error("Перезапуск не удался", e)
+                chatFeedback("§c[Shigu's Dream]§7 Перезапуск не удался: ${e.message} — закройте игру и запустите заново")
+            }
+        }.apply { isDaemon = false }.start()
     }
 
     /** Sends one ordinary backend command per direct user or group member. */

@@ -25,6 +25,7 @@ object RoleCommand {
                         1
                     })
                     .then(ClientCommands.literal("upload").executes { upload(); 1 })
+                    .then(ClientCommands.literal("restart").executes { ShigusDreamClient.restartGame(); 1 })
                     .then(ClientCommands.literal("users").executes { list(it); 1 })
                     .then(
                         ClientCommands.literal("role")

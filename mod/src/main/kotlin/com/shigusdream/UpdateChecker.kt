@@ -70,18 +70,29 @@ object UpdateChecker {
                 val newJar = modsDir.resolve(filename)
                 Files.write(newJar, bytes)
 
-                // Удаляем все старые jar мода, кроме freshly скачанного.
+                // Старые jar переименовываем в .old: на Windows файл может быть занят
+                // запущенной JVM, а переименование разрешено. Дочистка .old — при старте игры.
                 Files.list(modsDir).use { stream ->
                     stream.filter { p ->
                         val name = p.fileName.toString()
                         name.startsWith("shigusdream-") && name.endsWith(".jar") && p != newJar
                     }.forEach { p ->
-                        runCatching { Files.deleteIfExists(p) }
+                        runCatching { Files.move(p, p.resolveSibling(p.fileName.toString() + ".old")) }
                     }
                 }
 
                 downloadedVersion = latest
-                notify("§a[Shigu's Dream]§7 Обновлено до v$latest. §eПерезапустите игру!")
+                // Кликабельное сообщение: перезапуск игры в новую версию.
+                val restartLine = net.minecraft.network.chat.Component.literal("⟳ [Shigu's Dream] Обновиться и перезапустить игру")
+                    .withStyle { style ->
+                        style.withColor(net.minecraft.network.chat.TextColor.fromRgb(0x55FF55))
+                            .withBold(true)
+                            .withClickEvent(net.minecraft.network.chat.ClickEvent.RunCommand("/shigu restart"))
+                    }
+                notify("§a[Shigu's Dream]§7 Обновлено до v$latest.")
+                net.minecraft.client.Minecraft.getInstance().execute {
+                    com.shigusdream.ShigusDreamClient.chatFeedbackComponent(restartLine)
+                }
                 ShigusDream.LOGGER.info("Мод обновлён до {} -> {}", currentVersion, filename)
             } catch (e: Exception) {
                 ShigusDream.LOGGER.warn("Проверка обновлений не удалась: {}", e.message)
