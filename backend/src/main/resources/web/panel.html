@@ -4,21 +4,33 @@
 <meta charset="utf-8">
 <title>Shigu's Dream — веб-панель</title>
 <style>
-  body { font-family: system-ui, sans-serif; background: #14141f; color: #eee; margin: 0; padding: 2rem; }
-  h1 { font-size: 1.2rem; color: #b088ff; }
-  .card { background: #22223a; border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1rem; max-width: 640px; }
-  input, select, button { display: block; width: 100%; box-sizing: border-box; margin: .4rem 0; padding: .5rem;
-    border-radius: 6px; border: 1px solid #444; background: #1b1b2c; color: #eee; font-size: .95rem; }
-  button { background: #7c5cff; border: none; cursor: pointer; }
-  button.secondary { background: #33334f; }
-  label { font-size: .8rem; color: #999; }
+  body { font-family: system-ui, sans-serif; background: #101020; color: #C8C8D8; margin: 0; padding: 1.5rem 2rem; }
+  .badge { font-size: 1.05rem; color: #B088FF; letter-spacing: .3px; }
+  .badge .on { color: #55FF55; }
+  h1 { font-size: 1.1rem; color: #F2F2FF; font-weight: 600; margin: .2rem 0 1.2rem; }
+  .card { position: relative; background: #171727; border: 1px solid #34344C; border-left: 4px solid #7C5CFF;
+    border-radius: 4px; padding: .9rem 1.2rem; margin-bottom: 1rem; max-width: 660px; }
+  label { display: block; font-size: .78rem; color: #A0A0B0; margin: .5rem 0 .2rem; letter-spacing: .3px; }
+  input, select, button { display: block; width: 100%; box-sizing: border-box; margin: .25rem 0;
+    padding: .45rem .6rem; border-radius: 2px; border: 1px solid #4A4A6A; background: #171727;
+    color: #F2F2FF; font-size: .92rem; }
+  input:focus, select:focus { outline: none; border-color: #B088FF; }
+  input::placeholder { color: #606070; }
+  button { background: #22223A; color: #F2F2FF; cursor: pointer; border-left-width: 4px; transition: background .12s; }
+  button:hover { background: #3A3A55; }
+  button.accent { background: #26214A; border-color: #7C5CFF; color: #FFF; }
+  button.accent:hover { background: #332B5E; }
   .row { display: flex; gap: .5rem; } .row > * { flex: 1; }
-  #log { font-family: monospace; font-size: .8rem; color: #8f8; max-height: 200px; overflow-y: auto; }
+  select { appearance: none; }
+  #log { font-family: ui-monospace, monospace; font-size: .8rem; color: #7FD77F;
+    background: #0D0D18; border: 1px solid #34344C; padding: .5rem .7rem; max-height: 180px; overflow-y: auto; }
+  #status { color: #FFD76E; min-height: 1.1em; }
   .hidden { display: none; }
 </style>
 </head>
 <body>
-<h1>[Shigu's Dream] веб-панель</h1>
+<div class="badge">[Shigu's Dream] <span class="on">веб-панель</span></div>
+<h1>Управление сетью мода</h1>
 
 <div class="card" id="loginCard">
   <label>Refresh-токен владельца (config/shigusdream/tokens.json на клиенте)</label>
@@ -40,7 +52,7 @@
   <label>Аргументы (JSON)</label>
   <input id="args" value='{}'>
   <div class="row">
-    <button onclick="send()">Отправить</button>
+    <button class="accent" onclick="send()">Отправить</button>
     <button class="secondary" onclick="loadUsers()">Обновить список</button>
   </div>
   <label id="status"></label>

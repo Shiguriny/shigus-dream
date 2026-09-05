@@ -55,7 +55,8 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
     private var selectedPreset = ""
     private val fieldValues = LinkedHashMap<String, String>()
     private val fieldWidgets = mutableListOf<Pair<SchemaField, UiTextField>>()
-    private var effectBox: UiTextField? = null
+    private val fieldDropdownBoxes = LinkedHashMap<String, UiTextField>()
+    private var dropdownFieldKey: String? = null
     private var soundBox: UiTextField? = null
     private var soundSuggestions: List<String> = emptyList()
     private var editor: MiniMessageEditor? = null
@@ -111,7 +112,8 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         // иначе Screen продолжает рисовать их поверх новой раскладки.
         clearWidgets()
         fieldWidgets.clear()
-        effectBox = null
+        fieldDropdownBoxes.clear()
+        dropdownFieldKey = null
         soundBox = null
         soundSuggestions = emptyList()
         editor = null
@@ -222,9 +224,9 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
                     setResponder { updateSoundSuggestions(it) }
                     soundBox = this
                 }
-                if (field.key == "effect" && field.allowedValues != null) {
+                if (field.allowedValues != null) {
                     setEditable(false)
-                    effectBox = this
+                    fieldDropdownBoxes[field.key] = this
                 }
                 addRenderableWidget(this)
             }
@@ -248,7 +250,8 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         fieldWidgets.forEach { (_, widget) -> removeWidget(widget) }
         editor?.removeWidgets()
         fieldWidgets.clear()
-        effectBox = null
+        fieldDropdownBoxes.clear()
+        dropdownFieldKey = null
         soundBox = null
         soundSuggestions = emptyList()
         editor = null
@@ -514,7 +517,12 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
             if (mx in left..right && my in selectorTargetY until (selectorTargetY + 20)) return open(Dropdown.TARGET)
             if (mx in left..right && my in selectorActionY until (selectorActionY + 20)) return open(Dropdown.ACTION)
             if (mx in left..right && my in 144 until 164) return open(Dropdown.PRESET)
-            effectBox?.takeIf { it.visible }?.let { box -> if (mx in box.outerX..box.outerRight && my in box.outerY..box.outerBottom) return open(Dropdown.EFFECT) }
+            fieldDropdownBoxes.forEach { (key, box) ->
+                if (box.visible && mx in box.outerX..box.outerRight && my in box.outerY..box.outerBottom) {
+                    dropdownFieldKey = key
+                    return open(Dropdown.EFFECT)
+                }
+            }
             val sound = soundBox
             if (sound != null && sound.visible && soundSuggestions.isNotEmpty() && mx in left..right) {
                 val listY = sound.outerBottom
@@ -569,7 +577,7 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         Dropdown.TARGET -> AdminDataStore.groups.map { AdminDataStore.groupTarget(it.name) } + ShigusDreamRuntime.presenceUsers.map { it.username }
         Dropdown.ACTION -> ShigusDreamClient.registry.all().map { it.id }.sortedWith(compareBy<String> { it !in AdminDataStore.favorites }.thenBy { it })
         Dropdown.SCENARIO -> ScenarioStore.scenarios.map { it.name }
-        Dropdown.EFFECT -> selectedAction?.schema?.fields?.firstOrNull { it.key == "effect" }?.allowedValues ?: emptyList()
+        Dropdown.EFFECT -> selectedAction?.schema?.fields?.firstOrNull { it.key == dropdownFieldKey }?.allowedValues ?: emptyList()
         Dropdown.PRESET -> AdminDataStore.presets.map { it.name }
         Dropdown.NONE -> emptyList()
     }
@@ -590,7 +598,10 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
                 syncScenarioWidgets()
                 updateWidgetVisibility()
             }
-            Dropdown.EFFECT -> effectBox?.setValue(entry)
+            Dropdown.EFFECT -> dropdownFieldKey?.let { key ->
+                fieldDropdownBoxes[key]?.setValue(entry)
+                fieldValues[key] = entry
+            }
             Dropdown.PRESET -> loadPreset(entry)
             Dropdown.NONE -> Unit
         }
@@ -737,7 +748,7 @@ class AdminScreen : Screen(Minecraft.getInstance(), Minecraft.getInstance().font
         val anchor = when (openDropdown) {
             Dropdown.TARGET, Dropdown.SCENARIO -> selectorTargetY + 20
             Dropdown.ACTION -> selectorActionY + 20
-            Dropdown.EFFECT -> effectBox?.outerBottom ?: fieldsTop
+            Dropdown.EFFECT -> fieldDropdownBoxes[dropdownFieldKey]?.outerBottom ?: fieldsTop
             Dropdown.PRESET -> 164
             Dropdown.NONE -> fieldsTop
         }

@@ -48,12 +48,15 @@ class AskScreen(
     override fun extractRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         // Затемнение фона
         g.fill(0, 0, width, height, 0x90000000.toInt())
-        val label = Component.literal("§dВопрос от ведущего:")
-        g.centeredText(font, label, width / 2, height / 2 - 96, 0xFFFFFFFF.toInt())
+        g.centeredText(
+            font,
+            Component.literal("Вопрос от ведущего").withStyle { it.withColor(TextColor.fromRgb(0xB088FF)) },
+            width / 2, height / 2 - 96, -1,
+        )
         g.centeredText(
             font,
             com.shigusdream.client.MiniText.parse(question),
-            width / 2, height / 2 - 80, 0xFFFFFF,
+            width / 2, height / 2 - 80, -1,
         )
         g.centeredText(
             font,
