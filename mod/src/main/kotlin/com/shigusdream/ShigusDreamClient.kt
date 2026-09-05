@@ -13,6 +13,9 @@ import com.shigusdream.actions.impl.CameraShakeAction
 import com.shigusdream.actions.impl.PlayAmbientAction
 import com.shigusdream.actions.impl.ScareAction
 import com.shigusdream.actions.impl.HighlightAction
+import com.shigusdream.actions.impl.ShowTitleAction
+import com.shigusdream.actions.impl.SetPerspectiveAction
+import com.shigusdream.actions.impl.AskAction
 import com.shigusdream.actions.impl.FreezeControlsAction
 import com.shigusdream.actions.impl.NotificationAction
 import com.shigusdream.actions.impl.PlaySoundAction
@@ -116,6 +119,9 @@ object ShigusDreamClient : ClientModInitializer {
         registry.register(PlayAmbientAction)
         registry.register(ScareAction)
         registry.register(HighlightAction)
+        registry.register(ShowTitleAction)
+        registry.register(SetPerspectiveAction)
+        registry.register(AskAction)
         LinkCommand.register()
         RoleCommand.register()
 
@@ -129,8 +135,8 @@ object ShigusDreamClient : ClientModInitializer {
         val dispatcher = ActionDispatcher(
             registry = registry,
             executor = { runnable -> Minecraft.getInstance().execute(runnable) },
-            resultSink = { requestId, action, executed, error ->
-                connection.sendResult(requestId, action, executed, error)
+            resultSink = { requestId, action, executed, error, note ->
+                connection.sendResult(requestId, action, executed, error, note)
             },
             isAllowed = { action -> action !in config.blockedActions },
         )
@@ -340,11 +346,12 @@ object ShigusDreamClient : ClientModInitializer {
             com.shigusdream.client.VoiceChat.enqueuePlayback(pcm)
         }
 
-        override fun onActionResult(requestId: String, action: String, status: String, error: String?) {
+        override fun onActionResult(requestId: String, action: String, status: String, error: String?, note: String?) {
             CommandHistory.complete(requestId, status, error)
             ScenarioRunner.onResult(requestId, status, error)
             lastResultText = if (status == "executed") "✔ $action выполнено" else "✖ ${error ?: "failed"}"
             chatFeedback("§7[Shigu's Dream] $lastResultText")
+            note?.let { chatFeedback("§b[Shigu's Dream]§7 Ответ: §f$it") }
         }
 
         override fun onMessage(line: String) {

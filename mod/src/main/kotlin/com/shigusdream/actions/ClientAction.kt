@@ -52,6 +52,7 @@ data class ActionContext(
 data class ActionResult(
     val executed: Boolean,
     val error: String? = null,
+    val note: String? = null,
 ) {
     companion object {
         fun ok() = ActionResult(true)

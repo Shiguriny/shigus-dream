@@ -122,6 +122,7 @@ data class ActionResultPayload(
     val action: String,
     val status: String,
     val error: String? = null,
+    val note: String? = null,
     @SerialName("command_id") val commandId: String? = null,
 )
 

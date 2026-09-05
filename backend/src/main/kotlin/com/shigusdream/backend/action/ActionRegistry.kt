@@ -203,6 +203,40 @@ object ActionRegistry {
             ),
         ),
         ActionSpec(
+            id = "shigusdream:show_title",
+            name = "Show Title",
+            description = "Титры по центру экрана цели с подзаголовком.",
+            permission = "client.action.show_title",
+            schema = listOf(
+                SchemaField(key = "title", type = "string", required = true, maxLength = 256, description = "Большой текст (MiniMessage)"),
+                SchemaField(key = "subtitle", type = "string", maxLength = 256, description = "Подзаголовок"),
+                SchemaField(key = "fadeIn", type = "int", min = 0.0, max = 100.0, description = "Появление, тиков"),
+                SchemaField(key = "stay", type = "int", min = 10.0, max = 600.0, description = "На экране, тиков"),
+                SchemaField(key = "fadeOut", type = "int", min = 0.0, max = 100.0, description = "Исчезание, тиков"),
+            ),
+        ),
+        ActionSpec(
+            id = "shigusdream:set_perspective",
+            name = "Set Perspective",
+            description = "Принудительная перспектива камеры цели.",
+            permission = "client.action.set_perspective",
+            schema = listOf(
+                SchemaField(key = "perspective", type = "string", required = true, allowedValues = listOf("first_person", "third_back", "third_front"), description = "Перспектива"),
+                SchemaField(key = "duration", type = "int", min = 0.0, max = 24000.0, description = "Тиков до возврата (0 = не возвращать)"),
+            ),
+        ),
+        ActionSpec(
+            id = "shigusdream:ask",
+            name = "Ask",
+            description = "Интерактивный вопрос цели с кнопками; ответ возвращается владельцу.",
+            permission = "client.action.ask",
+            schema = listOf(
+                SchemaField(key = "question", type = "string", required = true, maxLength = 256, description = "Вопрос (MiniMessage)"),
+                SchemaField(key = "options", type = "string", description = "Варианты через | (до 4)"),
+                SchemaField(key = "duration", type = "int", required = true, min = 60.0, max = 12000.0, description = "Сколько тиков ждать ответа"),
+            ),
+        ),
+        ActionSpec(
             id = "shigusdream:apply_filter",
             name = "Apply Filter",
             description = "Экранный пост-эффект: grayscale, blur, invert, spider_vision, vignette, vhs, noise, darkening, sleepy, color_filter, damaged_vision.",

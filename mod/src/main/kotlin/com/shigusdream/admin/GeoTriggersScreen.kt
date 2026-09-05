@@ -74,6 +74,19 @@ class GeoTriggersScreen(private val parent: Screen) :
             )
             y += 16
         }
+
+        // Журнал срабатываний
+        y += 6
+        g.text(font, I18n.text("shigusdream.triggers.log"), left, y, 0xFFA0A0B0.toInt())
+        y += 14
+        val logEntries = com.shigusdream.admin.GeoTriggerRuntime.log.toList().asReversed()
+        if (logEntries.isEmpty()) {
+            g.text(font, I18n.text("shigusdream.triggers.log_empty"), left, y, 0xFF707070.toInt())
+        }
+        for (entry in logEntries.take(8)) {
+            g.text(font, Component.literal("${entry.time}  ${entry.trigger} — ${entry.player}"), left, y, 0xFFC8C8D8.toInt())
+            y += 13
+        }
     }
 
     override fun onClose() = Minecraft.getInstance().setScreen(parent)

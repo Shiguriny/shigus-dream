@@ -98,5 +98,11 @@
   "shigusdream.action.camera_shake.name": "Тряска камеры",
   "shigusdream.action.play_ambient.name": "Эмбиент-звук",
   "shigusdream.action.scare.name": "Пугалка",
-  "shigusdream.action.highlight.name": "Выделить"
+  "shigusdream.action.highlight.name": "Выделить",
+  "shigusdream.action.show_title.name": "Титры",
+  "shigusdream.action.set_perspective.name": "Перспектива",
+  "shigusdream.action.ask.name": "Вопрос",
+  "shigusdream.triggers.log": "Журнал срабатываний:",
+  "shigusdream.triggers.log_empty": "Пока пусто",
+  "shigusdream.triggers.current_scenario": "Сценарий для новых зон: %s"
 }

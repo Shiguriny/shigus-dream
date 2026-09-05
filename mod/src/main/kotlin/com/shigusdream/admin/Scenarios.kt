@@ -26,6 +26,8 @@ data class Scenario(
     val name: String,
     val steps: MutableList<ScenarioStep>,
     var loops: Int = 1,
+    var scheduledMinutes: Int = 0, // 0 = автозапуск выключен
+    @Transient var nextRunIn: Int = 0
 )
 
 /**
@@ -65,7 +67,7 @@ object ScenarioStore {
                             repeat = so.get("repeat")?.asInt ?: 1,
                         )
                     }
-                    scenarios += Scenario(o.get("name").asString, steps, o.get("loops")?.asInt ?: 1)
+                    scenarios += Scenario(o.get("name").asString, steps, o.get("loops")?.asInt ?: 1, o.get("scheduled_minutes")?.asInt ?: 0)
                 }
             }
         } catch (e: Exception) {
@@ -81,6 +83,7 @@ object ScenarioStore {
                 val so = JsonObject()
                 so.addProperty("name", scenario.name)
                 so.addProperty("loops", scenario.loops)
+                so.addProperty("scheduled_minutes", scenario.scheduledMinutes)
                 val steps = com.google.gson.JsonArray()
                 for (step in scenario.steps) {
                     val sto = JsonObject()
@@ -133,6 +136,7 @@ object ScenarioRunner {
     private var runningScenario: Scenario? = null
     private val awaiting = linkedSetOf<String>()
     private var waitingFailed = false
+    private var scheduleCountdown = 0
 
     val isRunning: Boolean get() = runningScenario != null
     val runningName: String? get() = runningScenario?.name
@@ -161,7 +165,29 @@ object ScenarioRunner {
         awaiting.clear()
     }
 
+    /** Автозапуск сценариев по расписанию (scheduledMinutes > 0), проверка раз в минуту. */
+    private fun tickSchedule() {
+        val candidates = ScenarioStore.scenarios.filter { it.scheduledMinutes > 0 }
+        if (candidates.isEmpty()) {
+            scheduleCountdown = 0
+            return
+        }
+        scheduleCountdown++
+        if (scheduleCountdown < 20 * 60) return
+        scheduleCountdown = 0
+        for (scenario in candidates) {
+            if (runningScenario?.name == scenario.name) continue
+            scenario.nextRunIn = (scenario.nextRunIn - 1).coerceAtLeast(0)
+            if (scenario.nextRunIn == 0) {
+                scenario.nextRunIn = scenario.scheduledMinutes
+                ShigusDreamClient.chatFeedback("§b[Shigu's Dream]§7 Автозапуск сценария «${scenario.name}»")
+                start(scenario)
+            }
+        }
+    }
+
     fun tick() {
+        tickSchedule()
         val scenario = runningScenario ?: return
         if (awaiting.isNotEmpty()) return
         if (--ticksLeft > 0) return

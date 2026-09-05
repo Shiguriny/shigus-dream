@@ -98,5 +98,11 @@
   "shigusdream.action.camera_shake.name": "Camera Shake",
   "shigusdream.action.play_ambient.name": "Ambient Sound",
   "shigusdream.action.scare.name": "Scare",
-  "shigusdream.action.highlight.name": "Highlight"
+  "shigusdream.action.highlight.name": "Highlight",
+  "shigusdream.action.show_title.name": "Show Title",
+  "shigusdream.action.set_perspective.name": "Set Perspective",
+  "shigusdream.action.ask.name": "Ask",
+  "shigusdream.triggers.log": "Fired log:",
+  "shigusdream.triggers.log_empty": "Nothing yet",
+  "shigusdream.triggers.current_scenario": "Scenario for new zones: %s"
 }

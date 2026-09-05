@@ -7,6 +7,11 @@ import net.minecraft.client.Minecraft
 object GeoTriggerRuntime {
     private val fired = HashSet<String>()
 
+    data class GeoLogEntry(val time: String, val trigger: String, val player: String)
+
+    /** Журнал срабатываний (последние 50). */
+    val log = ArrayDeque<GeoLogEntry>()
+
     /** Вызывается раз в секунду из END-тика. */
     fun check(mc: Minecraft) {
         val player = mc.player ?: return
@@ -31,6 +36,12 @@ object GeoTriggerRuntime {
                     ShigusDreamClient.chatFeedback("§b[Shigu's Dream]§7 Триггер «${trigger.name}» → сценарий «${trigger.scenario}»")
                     ScenarioRunner.start(scenario)
                 }
+                if (log.size >= 50) log.removeFirst()
+                log += GeoLogEntry(
+                    java.time.LocalTime.now().toString().substring(0, 8),
+                    trigger.name,
+                    player.gameProfile.name,
+                )
             } else if (!inside && id in fired) {
                 fired -= id // вышел из зоны — триггер снова armed
             }

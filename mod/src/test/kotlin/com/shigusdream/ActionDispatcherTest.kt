@@ -22,7 +22,7 @@ class ActionDispatcherTest {
         val dispatcher = ActionDispatcher(
             registry = registry1(),
             executor = { it.run() },
-            resultSink = { _, _, ok, err ->
+            resultSink = { _, _, ok, err, _ ->
                 synchronized(results) { results += ok to err }
                 latch.countDown()
             },
@@ -47,7 +47,7 @@ class ActionDispatcherTest {
         val dispatcher = ActionDispatcher(
             registry = registry1(),
             executor = { it.run() },
-            resultSink = { _, _, ok, err ->
+            resultSink = { _, _, ok, err, _ ->
                 synchronized(results) { results += ok to err }
                 latch.countDown()
             },
@@ -69,7 +69,7 @@ class ActionDispatcherTest {
         val dispatcher = ActionDispatcher(
             registry = registry1(),
             executor = { it.run() },
-            resultSink = { _, _, ok, err ->
+            resultSink = { _, _, ok, err, _ ->
                 synchronized(results) { results += ok to err }
                 latch.countDown()
             },
@@ -86,7 +86,7 @@ class ActionDispatcherTest {
         val dispatcher = ActionDispatcher(
             registry = registry1(),
             executor = { it.run() },
-            resultSink = { _, _, ok, err ->
+            resultSink = { _, _, ok, err, _ ->
                 synchronized(results) { results += ok to err }
                 latch.countDown()
             },

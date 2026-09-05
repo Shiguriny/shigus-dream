@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Shigu's Dream — веб-панель</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #14141f; color: #eee; margin: 0; padding: 2rem; }
+  h1 { font-size: 1.2rem; color: #b088ff; }
+  .card { background: #22223a; border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1rem; max-width: 640px; }
+  input, select, button { display: block; width: 100%; box-sizing: border-box; margin: .4rem 0; padding: .5rem;
+    border-radius: 6px; border: 1px solid #444; background: #1b1b2c; color: #eee; font-size: .95rem; }
+  button { background: #7c5cff; border: none; cursor: pointer; }
+  button.secondary { background: #33334f; }
+  label { font-size: .8rem; color: #999; }
+  .row { display: flex; gap: .5rem; } .row > * { flex: 1; }
+  #log { font-family: monospace; font-size: .8rem; color: #8f8; max-height: 200px; overflow-y: auto; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>[Shigu's Dream] веб-панель</h1>
+
+<div class="card" id="loginCard">
+  <label>Refresh-токен владельца (config/shigusdream/tokens.json на клиенте)</label>
+  <input id="refreshToken" placeholder="refresh_token">
+  <button onclick="login()">Войти</button>
+</div>
+
+<div class="card hidden" id="mainCard">
+  <div class="row">
+    <div>
+      <label>Цель (ник или @группа)</label>
+      <select id="target"></select>
+    </div>
+    <div>
+      <label>Действие</label>
+      <select id="action"></select>
+    </div>
+  </div>
+  <label>Аргументы (JSON)</label>
+  <input id="args" value='{}'>
+  <div class="row">
+    <button onclick="send()">Отправить</button>
+    <button class="secondary" onclick="loadUsers()">Обновить список</button>
+  </div>
+  <label id="status"></label>
+</div>
+
+<div class="card hidden" id="logCard">
+  <label>Журнал</label>
+  <div id="log"></div>
+</div>
+
+<script>
+let ACCESS = null;
+let actions = [];
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.innerHTML = `<div>${new Date().toLocaleTimeString()} — ${msg}</div>` + el.innerHTML;
+}
+
+async function login() {
+  const rt = document.getElementById('refreshToken').value.trim();
+  const r = await fetch('/auth/refresh', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: rt }) });
+  if (!r.ok) { alert('Токен отклонён: ' + r.status); return; }
+  ACCESS = (await r.json()).access_token;
+  document.getElementById('loginCard').classList.add('hidden');
+  document.getElementById('mainCard').classList.remove('hidden');
+  document.getElementById('logCard').classList.remove('hidden');
+  await loadUsers();
+  actions = await (await fetch('/actions')).json();
+  const sel = document.getElementById('action');
+  actions.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.id; o.textContent = a.name;
+    sel.appendChild(o);
+  });
+  sel.onchange = fillArgs;
+  fillArgs();
+}
+
+function fillArgs() {
+  const id = document.getElementById('action').value;
+  const a = actions.find(x => x.id === id);
+  const def = {};
+  (a?.schema || []).forEach(f => {
+    if (f.required || f.default !== undefined && f.default !== null)
+      def[f.key] = f.default ?? '';
+  });
+  document.getElementById('args').value = JSON.stringify(def);
+}
+
+async function loadUsers() {
+  const r = await fetch('/users', { headers: { Authorization: 'Bearer ' + ACCESS } });
+  if (!r.ok) { log('Ошибка /users: ' + r.status); return; }
+  const users = (await r.json()).users;
+  const sel = document.getElementById('target');
+  sel.innerHTML = '';
+  users.forEach(u => {
+    const o = document.createElement('option');
+    o.value = u.username;
+    o.textContent = (u.online ? '● ' : '○ ') + u.username + ' (' + u.role + ')';
+    sel.appendChild(o);
+  });
+}
+
+async function send() {
+  let args = {};
+  try { args = JSON.parse(document.getElementById('args').value || '{}'); }
+  catch (e) { alert('Невалидный JSON аргументов'); return; }
+  const body = {
+    target: document.getElementById('target').value,
+    action: document.getElementById('action').value,
+    args: args,
+  };
+  const r = await fetch('/commands', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ACCESS },
+    body: JSON.stringify(body) });
+  const status = document.getElementById('status');
+  if (r.ok) { const j = await r.json(); status.textContent = 'Отправлено: ' + JSON.stringify(j); log('→ ' + body.action + ' @ ' + body.target); }
+  else { const e = await r.json().catch(() => ({})); status.textContent = 'Ошибка ' + r.status + ': ' + (e.message || ''); }
+}
+</script>
+</body>
+</html>

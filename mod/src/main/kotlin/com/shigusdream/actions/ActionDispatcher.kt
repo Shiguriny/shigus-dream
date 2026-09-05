@@ -12,7 +12,7 @@ import java.util.ArrayDeque
 class ActionDispatcher(
     private val registry: ActionRegistry,
     private val executor: (Runnable) -> Unit,
-    private val resultSink: (requestId: String, action: String, executed: Boolean, error: String?) -> Unit,
+    private val resultSink: (requestId: String, action: String, executed: Boolean, error: String?, note: String?) -> Unit,
     private val isAllowed: (String) -> Boolean = { true },
 ) {
     private val recentRequestIds = ArrayDeque<String>()
@@ -26,26 +26,26 @@ class ActionDispatcher(
         val action = registry.byId(actionId)
         if (action == null) {
             ShigusDream.LOGGER.warn("Получено неизвестное действие: {}", actionId)
-            resultSink(requestId, actionId, false, "unknown_action")
+            resultSink(requestId, actionId, false, "unknown_action", null)
             return
         }
 
         if (!deduplicate(requestId)) {
             ShigusDream.LOGGER.info("Дубликат request_id {} отклонён", requestId)
-            resultSink(requestId, actionId, false, "duplicate_request")
+            resultSink(requestId, actionId, false, "duplicate_request", null)
             return
         }
 
         if (!isAllowed(actionId)) {
             ShigusDream.LOGGER.info("Action {} blocked by client safety settings", actionId)
-            resultSink(requestId, actionId, false, "blocked_by_client")
+            resultSink(requestId, actionId, false, "blocked_by_client", null)
             return
         }
 
         val errors = ActionValidator.validate(action.schema, args)
         if (errors.isNotEmpty()) {
             ShigusDream.LOGGER.warn("Невалидные аргументы для {}: {}", actionId, errors.joinToString("; "))
-            resultSink(requestId, actionId, false, "invalid_arguments: ${errors.joinToString("; ")}")
+            resultSink(requestId, actionId, false, "invalid_arguments: ${errors.joinToString("; ")}", null)
             return
         }
 
@@ -57,7 +57,7 @@ class ActionDispatcher(
                 ShigusDream.LOGGER.error("Ошибка выполнения действия {}", actionId, e)
                 ActionResult.fail("execution_error: ${e.message ?: e.javaClass.simpleName}")
             }
-            resultSink(requestId, actionId, result.executed, result.error)
+            resultSink(requestId, actionId, result.executed, result.error, result.note)
             ShigusDream.LOGGER.info(
                 "action {} request_id={} -> {}",
                 actionId,

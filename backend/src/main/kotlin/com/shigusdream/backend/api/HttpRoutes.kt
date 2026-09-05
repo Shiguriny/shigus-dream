@@ -93,6 +93,17 @@ class HttpRoutes(
 
         get("/health") { call.respondJson("""{"status":"ok"}""") }
 
+        // Веб-панель: HTML + отправка команд через REST (для управления без игры).
+        get("/panel") {
+            val html = runCatching {
+                java.util.Objects.requireNonNull(
+                    HttpRoutes::class.java.classLoader.getResourceAsStream("web/panel.html"),
+                ).readBytes().toString(Charsets.UTF_8)
+            }.getOrDefault("<html><body><h1>panel.html not found</h1></body></html>")
+            call.respondText(html, ContentType.Text.Html)
+        }
+        post("/commands") { handleCommandPost(call) }
+
         get("/actions") {
             call.respondJson(json.encodeToString(ListSerializer(ActionSpec.serializer()), ActionRegistry.ACTIONS))
         }
@@ -109,6 +120,64 @@ class HttpRoutes(
         get("/mod/latest") { handleModLatest(call) }
         get("/mod/download") { handleModDownload(call) }
         post("/mod/upload") { handleModUpload(call) }
+    }
+
+    /** Создаёт и доставляет команду через REST (веб-панель), минуя WS. */
+    private suspend fun handleCommandPost(call: ApplicationCall) {
+        val admin = call.authorizedAdmin() ?: return
+        val body = try {
+            json.decodeFromString(
+                kotlinx.serialization.json.JsonObject.serializer(),
+                call.receiveText(),
+            )
+        } catch (_: Exception) {
+            call.respondError(HttpStatusCode.BadRequest, "malformed_request", "Ожидается JSON {target, action, args}")
+            return
+        }
+        val target = body["target"]?.let { it as? kotlinx.serialization.json.JsonPrimitive }?.content ?: ""
+        val action = body["action"]?.let { it as? kotlinx.serialization.json.JsonPrimitive }?.content ?: ""
+        val args = (body["args"] as? kotlinx.serialization.json.JsonObject) ?: kotlinx.serialization.json.JsonObject(emptyMap())
+        val mode = (body["mode"] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "immediate"
+
+        val payload = com.shigusdream.backend.protocol.ActionExecutePayload(
+            target = target, action = action, args = args, mode = mode,
+        )
+        val requestId = "web-${java.util.UUID.randomUUID()}"
+        when (val outcome = commandService.handle(admin, payload, requestId)) {
+            is com.shigusdream.backend.command.CommandService.HandleOutcome.Rejected -> {
+                call.respondError(HttpStatusCode.BadRequest, outcome.code, outcome.message)
+            }
+
+            is com.shigusdream.backend.command.CommandService.HandleOutcome.Created -> {
+                val command = outcome.command
+                val forwardPayload = com.shigusdream.backend.protocol.ActionExecutePayload(
+                    target = outcome.target.username,
+                    action = payload.action,
+                    args = payload.args,
+                    mode = payload.mode,
+                    commandId = command.id.toString(),
+                )
+                val envelope = com.shigusdream.backend.protocol.Envelope(
+                    requestId = requestId,
+                    messageType = com.shigusdream.backend.protocol.MessageType.ACTION_EXECUTE,
+                    payload = com.shigusdream.backend.protocol.ProtocolJson.encodeToJsonElement(
+                        com.shigusdream.backend.protocol.ActionExecutePayload.serializer(), forwardPayload,
+                    ),
+                )
+                when {
+                    wsManager.deliverTo(outcome.target.id, envelope) -> {
+                        commandService.markForDelivery(command)
+                    }
+
+                    payload.mode == "queued" -> {}
+
+                    else -> commandService.markFailedOffline(command, com.shigusdream.backend.protocol.ErrorCode.TARGET_OFFLINE)
+                }
+                call.respondJson(
+                    """{"status":"${command.status}","command_id":"${command.id}","request_id":"$requestId"}""",
+                )
+            }
+        }
     }
 
     // ------------------------------------------------------------------ auth

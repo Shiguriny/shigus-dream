@@ -47,7 +47,7 @@ class BackendConnection(
         fun onPresence(users: List<PresenceUser>)
         fun onAuthSuccess(username: String?, refreshToken: String?, accessToken: String?, role: String?)
         fun onAuthError(code: String, message: String)
-        fun onActionResult(requestId: String, action: String, status: String, error: String?)
+        fun onActionResult(requestId: String, action: String, status: String, error: String?, note: String? = null)
         fun onStateChange(state: State)
 
         /** Роль текущего аккаунта изменена на лету (владельцем). */
@@ -277,7 +277,8 @@ class BackendConnection(
                 val action = env.payload.get("action")?.asString ?: ""
                 val status = env.payload.get("status")?.asString ?: ""
                 val error = env.payload.get("error")?.takeIf { it.isJsonPrimitive }?.asString
-                handler?.onActionResult(env.requestId ?: "", action, status, error)
+                val note = env.payload.get("note")?.takeIf { it.isJsonPrimitive }?.asString
+                handler?.onActionResult(env.requestId ?: "", action, status, error, note)
             }
 
             Msg.ACTION_ERROR -> {
@@ -337,11 +338,12 @@ class BackendConnection(
         return requestId
     }
 
-    fun sendResult(requestId: String, action: String, executed: Boolean, error: String?) {
+    fun sendResult(requestId: String, action: String, executed: Boolean, error: String?, note: String? = null) {
         val payload = JsonObject().apply {
             addProperty("action", action)
             addProperty("status", if (executed) "executed" else "failed")
             error?.let { addProperty("error", it) }
+            note?.let { addProperty("note", it) }
         }
         client?.send(Envelope(Msg.ACTION_RESULT, requestId = requestId, payload = payload).toJson())
     }

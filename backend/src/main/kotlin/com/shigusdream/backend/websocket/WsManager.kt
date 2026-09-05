@@ -52,6 +52,13 @@ class WsManager(
 
     fun isOnline(userId: UUID): Boolean = sessions.containsKey(userId)
 
+    /** Доставка команды веб-панели онлайн-цели. Возвращает true, если цель в сети. */
+    suspend fun deliverTo(targetId: UUID, envelope: Envelope): Boolean {
+        val session = sessions[targetId] ?: return false
+        session.send(envelope)
+        return true
+    }
+
     fun presenceSnapshot(): List<PresenceEntryDto> =
         users.all().map { PresenceEntryDto(id = it.id.toString(), username = it.username, role = it.role, online = isOnline(it.id)) }
 
@@ -366,11 +373,11 @@ class WsManager(
                 messageType = MessageType.ACTION_RESULT,
                 payload = ProtocolJson.encodeToJsonElement(
                     ActionResultPayload.serializer(),
-                    ActionResultPayload(action = payload.action, status = payload.status, error = payload.error, commandId = command.id.toString()),
+                    ActionResultPayload(action = payload.action, status = payload.status, error = payload.error, note = payload.note, commandId = command.id.toString()),
                 ),
             ),
         )
-        commandLog(senderName(command.senderId), user.username, payload.action, env.requestId, payload.status, payload.error)
+        commandLog(senderName(command.senderId), user.username, payload.action, env.requestId, payload.status, payload.note ?: payload.error)
     }
 
     // ------------------------------------------------------------------ helpers
