@@ -48,6 +48,11 @@ object ScreenFx {
         }
 
         if (shader != null) {
+            // Отсутствующая post-цепочка в 26.x роняет кадр вместе с соединением — проверяем ресурс заранее.
+            if (!postChainExists(shader)) {
+                ShigusDream.LOGGER.warn("Пост-цепочка {} не найдена в ресурсах", shader)
+                return ActionResult.fail("post chain not found: $shader")
+            }
             shaderId = shader
             shaderName = effect
             shaderTicks = ticks
@@ -80,6 +85,19 @@ object ScreenFx {
         }
         ShigusDream.LOGGER.info("экранный эффект {} на {} тиков", effect, ticks)
         return ActionResult.ok()
+    }
+
+    /** Проверяет наличие post_effect/<ns>/<path>.json в ресурсах игры. */
+    private fun postChainExists(id: Identifier): Boolean {
+        val resId = Identifier.fromNamespaceAndPath(id.namespace, "post_effect/${id.path}.json")
+        val result = runCatching {
+            Minecraft.getInstance().resourceManager.getResource(resId)
+        }.getOrNull()
+        return when (result) {
+            null -> false
+            is java.util.Optional<*> -> result.isPresent
+            else -> true
+        }
     }
 
     fun tick(mc: Minecraft) {
