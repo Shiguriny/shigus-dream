@@ -81,6 +81,7 @@ object ShigusDreamClient : ClientModInitializer {
     private lateinit var statusKey: KeyMapping
     private lateinit var pttKey: KeyMapping
     private var geoCheckCounter = 0
+    private var updateCheckCounter = 0
 
     override fun onInitializeClient() {
         val configDir = FabricLoader.getInstance().configDir
@@ -214,6 +215,15 @@ object ShigusDreamClient : ClientModInitializer {
         if (geoCheckCounter >= 20) {
             geoCheckCounter = 0
             com.shigusdream.admin.GeoTriggerRuntime.check(client)
+        }
+        updateCheckCounter++
+        if (updateCheckCounter >= 6000) { // раз в 5 минут
+            updateCheckCounter = 0
+            UpdateChecker.checkAndDownload(
+                baseUrl = config.backendUrl,
+                modsDir = FabricLoader.getInstance().gameDir.resolve("mods"),
+                currentVersion = modVersion(),
+            ) { message -> chatFeedback(message) }
         }
     }
 

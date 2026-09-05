@@ -14,14 +14,22 @@ import java.time.Duration
  */
 object UpdateChecker {
 
+    /** Проверяем не чаще раза в минуту (вход в мир + периодический тик). */
+    private const val MIN_CHECK_INTERVAL_MS = 60_000L
+
     @Volatile
-    private var checkedThisSession = false
+    private var lastCheckAt = 0L
+
+    /** Версия, уже скачанная и ждущая перезапуска, — чтобы не качать повторно. */
+    @Volatile
+    private var downloadedVersion: String? = null
 
     private val http: HttpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
 
     fun checkAndDownload(baseUrl: String, modsDir: Path, currentVersion: String, notify: (String) -> Unit) {
-        if (checkedThisSession) return
-        checkedThisSession = true
+        val now = System.currentTimeMillis()
+        if (now - lastCheckAt < MIN_CHECK_INTERVAL_MS) return
+        lastCheckAt = now
         Thread {
             try {
                 val request = HttpRequest.newBuilder(URI.create(baseUrl.trimEnd('/') + "/mod/latest"))
@@ -33,6 +41,8 @@ object UpdateChecker {
 
                 val json = com.google.gson.JsonParser.parseString(response.body()).asJsonObject
                 val latest = json.get("version").asString
+                // Уже скачали эту версию и ждём перезапуска игры — не качаем повторно.
+                downloadedVersion?.let { dv -> if (compareVersions(latest, dv) <= 0) return@Thread }
                 if (compareVersions(latest, currentVersion) <= 0) return@Thread
 
                 notify("§e[Shigu's Dream]§7 Доступно обновление: §fv$latest§7 (у вас v$currentVersion). Скачиваю...")
@@ -70,6 +80,7 @@ object UpdateChecker {
                     }
                 }
 
+                downloadedVersion = latest
                 notify("§a[Shigu's Dream]§7 Обновлено до v$latest. §eПерезапустите игру!")
                 ShigusDream.LOGGER.info("Мод обновлён до {} -> {}", currentVersion, filename)
             } catch (e: Exception) {
