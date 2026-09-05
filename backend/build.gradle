@@ -5,7 +5,9 @@ plugins {
 }
 
 group = 'com.shigusdream'
-version = file('../VERSION').text.trim()
+def versionFile = file('../VERSION')
+// Fallback на случай сборки вне контекста репозитория (например, старый Docker-контекст).
+version = versionFile.exists() ? versionFile.text.trim() : '0.5.4'
 
 repositories {
     mavenCentral()

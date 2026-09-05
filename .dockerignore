@@ -1,0 +1,18 @@
+# Контекст сборки Docker — корень репозитория (см. render.yaml).
+# Исключаем всё тяжёлое и локальное, чтобы сборка была быстрой.
+.git
+**/.gradle
+**/build
+**/run
+**/logs
+dist
+mod
+db
+tests
+scripts
+README.md
+docker-compose.yml
+fly.toml
+.gitignore
+.gitattributes
+VERSION.bak
