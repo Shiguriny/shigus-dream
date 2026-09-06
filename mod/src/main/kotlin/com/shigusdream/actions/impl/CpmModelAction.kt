@@ -34,7 +34,7 @@ object CpmModelAction : ClientAction {
         ),
     )
 
-    private const val CPM_MODELS_DIR = "customplayermodels"
+    private const val CPM_MODELS_DIR = "player_models"
 
     override fun execute(client: Any?, context: ActionContext): ActionResult {
         // CPM должен быть загружен
