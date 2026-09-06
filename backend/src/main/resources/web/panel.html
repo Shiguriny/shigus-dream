@@ -2,139 +2,363 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Shigu's Dream — веб-панель</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[Shigu's Dream] Веб-панель</title>
 <style>
-  body { font-family: system-ui, sans-serif; background: #101020; color: #C8C8D8; margin: 0; padding: 1.5rem 2rem; }
-  .badge { font-size: 1.05rem; color: #B088FF; letter-spacing: .3px; }
-  .badge .on { color: #55FF55; }
-  h1 { font-size: 1.1rem; color: #F2F2FF; font-weight: 600; margin: .2rem 0 1.2rem; }
-  .card { position: relative; background: #171727; border: 1px solid #34344C; border-left: 4px solid #7C5CFF;
-    border-radius: 4px; padding: .9rem 1.2rem; margin-bottom: 1rem; max-width: 660px; }
-  label { display: block; font-size: .78rem; color: #A0A0B0; margin: .5rem 0 .2rem; letter-spacing: .3px; }
-  input, select, button { display: block; width: 100%; box-sizing: border-box; margin: .25rem 0;
-    padding: .45rem .6rem; border-radius: 2px; border: 1px solid #4A4A6A; background: #171727;
-    color: #F2F2FF; font-size: .92rem; }
-  input:focus, select:focus { outline: none; border-color: #B088FF; }
-  input::placeholder { color: #606070; }
-  button { background: #22223A; color: #F2F2FF; cursor: pointer; border-left-width: 4px; transition: background .12s; }
-  button:hover { background: #3A3A55; }
-  button.accent { background: #26214A; border-color: #7C5CFF; color: #FFF; }
-  button.accent:hover { background: #332B5E; }
-  .row { display: flex; gap: .5rem; } .row > * { flex: 1; }
-  select { appearance: none; }
-  #log { font-family: ui-monospace, monospace; font-size: .8rem; color: #7FD77F;
-    background: #0D0D18; border: 1px solid #34344C; padding: .5rem .7rem; max-height: 180px; overflow-y: auto; }
-  #status { color: #FFD76E; min-height: 1.1em; }
-  .hidden { display: none; }
+:root { --bg:#101020; --card:#171727; --card2:#22223A; --card-h:#2A2A44; --accent:#7C5CFF; --purple:#B088FF; --white:#F2F2FF; --label:#A0A0B0; --field:#C8C8D8; --dim:#909090; --green:#55FF55; --red:#FF5555; --yellow:#FFD76E; --border:#34344C; --border2:#4A4A6A; --list:#0D0D18; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--white); padding: 1.5rem 2rem; }
+.badge { font-size: 1rem; color: var(--purple); margin-bottom: .8rem; }
+h2.section { font-size: .82rem; color: var(--label); font-weight: 500; margin: 1rem 0 .3rem; letter-spacing: .3px; }
+.dd { position: relative; }
+.dd-btn { display: flex; align-items: center; width: 100%; padding: .45rem .7rem; background: var(--card2); border: none; border-left: 3px solid var(--accent); color: var(--white); cursor: pointer; font-size: .92rem; text-align: left; }
+.dd-btn:hover { background: var(--card-h); }
+.dd-btn .arrow { margin-left: auto; color: var(--label); font-size: .7rem; }
+.dd-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--list); border: 1px solid var(--border); z-index: 100; max-height: 200px; overflow-y: auto; }
+.dd-row { padding: .35rem .7rem; cursor: pointer; color: var(--field); font-size: .88rem; }
+.dd-row:hover, .dd-row.sel { background: #3A3A66; color: var(--white); }
+.field-box { display: flex; align-items: center; background: #171727; border: 1px solid var(--border2); border-left: 3px solid var(--accent); padding: .45rem .6rem; }
+.field-box input, .field-box textarea { flex: 1; background: transparent; border: none; color: var(--white); font-size: .9rem; outline: none; }
+.field-box input::placeholder, .field-box textarea::placeholder { color: #606070; }
+.field-box:focus-within { border-color: var(--purple); }
+.btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: .5rem; background: var(--card2); border: none; border-left: 3px solid var(--border2); color: var(--white); cursor: pointer; font-size: .92rem; transition: background .1s; }
+.btn:hover { background: var(--card-h); }
+.btn.accent { border-left-color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: default; }
+.tabs { display: flex; gap: .3rem; margin-bottom: .5rem; }
+.tab { padding: .4rem 1.2rem; background: var(--card2); color: var(--label); cursor: pointer; font-size: .9rem; border: none; border-left: 3px solid var(--border2); }
+.tab.active { background: #3A3A66; color: var(--white); border-left-color: var(--accent); }
+.panel-card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 1rem 1.2rem; margin-bottom: 1rem; max-width: 720px; }
+.dot-on { color: var(--green); } .dot-off { color: #707070; }
+.arg-label { font-size: .78rem; color: var(--field); margin-bottom: .15rem; }
+.arg-label .req { color: var(--red); }
+.arg-label .type { color: var(--dim); font-size: .72rem; }
+.mm-row { display: flex; gap: .25rem; margin: .3rem 0; flex-wrap: wrap; }
+.mm-swatch { width: 22px; height: 22px; cursor: pointer; border: 1px solid var(--border2); }
+.mm-swatch:hover { border-color: var(--purple); }
+.mm-style { width: 28px; height: 24px; cursor: pointer; background: var(--card2); border: 1px solid var(--border2); color: var(--white); font-size: .8rem; display: flex; align-items: center; justify-content: center; }
+.mm-style:hover { background: var(--card-h); border-color: var(--purple); }
+.mm-preview { min-height: 1.4em; padding: .3rem .5rem; background: #0D0D18; border: 1px solid var(--border); font-size: .88rem; margin-top: .3rem; }
+.log-line { font-family: ui-monospace, monospace; font-size: .78rem; color: #7FD77F; padding: .15rem .4rem; background: #0D0D18; margin: .1rem 0; }
+.step-row { display: flex; align-items: center; gap: .4rem; padding: .25rem .5rem; background: var(--list); margin: .15rem 0; font-size: .82rem; cursor: pointer; }
+.step-row:hover, .step-row.sel { background: #2A3A55; }
+.step-row.sel { border-left: 3px solid var(--purple); }
+#status { min-height: 1.2em; font-size: .85rem; }
+.hidden { display: none; }
 </style>
 </head>
 <body>
-<div class="badge">[Shigu's Dream] <span class="on">веб-панель</span></div>
-<h1>Управление сетью мода</h1>
-
-<div class="card" id="loginCard">
-  <label>Refresh-токен владельца (config/shigusdream/tokens.json на клиенте)</label>
-  <input id="refreshToken" placeholder="refresh_token">
-  <button onclick="login()">Войти</button>
+<div class="badge">[Shigu's Dream] <span id="connDot">○</span></div>
+<div class="tabs">
+  <button class="tab active" id="tabActions" onclick="switchTab('actions')">Действия</button>
+  <button class="tab" id="tabScenarios" onclick="switchTab('scenarios')">Сценарии</button>
+  <button class="tab" id="tabLog" onclick="switchTab('log')">Журнал</button>
 </div>
-
-<div class="card hidden" id="mainCard">
-  <div class="row">
-    <div>
-      <label>Цель (ник или @группа)</label>
-      <select id="target"></select>
+<div id="loginCard" class="panel-card">
+  <label>Refresh-токен владельца</label>
+  <input id="refreshToken" placeholder="refresh_token из tokens.json">
+  <button class="btn accent" onclick="login()">Войти</button>
+</div>
+<div id="panelActions" class="panel-card" style="display:none;">
+  <h2 class="section">Target</h2>
+  <div class="dd"><div class="dd-btn" onclick="toggleDD('targetList')"><span id="targetLabel">—</span><span class="arrow">▼</span></div><div class="dd-list hidden" id="targetList"></div></div>
+  <h2 class="section">Action</h2>
+  <div class="dd"><div class="dd-btn" onclick="toggleDD('actionDD')"><span id="actionLabel">—</span><span class="arrow">▼</span></div><div class="dd-list hidden" id="actionDD"></div></div>
+  <h2 class="section">Arguments</h2>
+  <div id="argFields"></div>
+  <div id="mmEditor" style="display:none; margin-top:.8rem;">
+    <h2 class="section">MiniMessage</h2>
+    <div id="mmPalette" style="display:flex; gap:2px; flex-wrap:wrap; margin:.3rem 0;"></div>
+    <div style="display:flex; gap:2px; margin:.3rem 0;">
+      <span class="mm-style" onclick="mmWrap('&lt;bold&gt;','&lt;/bold&gt;')"><b>B</b></span>
+      <span class="mm-style" onclick="mmWrap('&lt;italic&gt;','&lt;/italic&gt;')"><i>I</i></span>
+      <span class="mm-style" onclick="mmWrap('&lt;underlined&gt;','&lt;/underlined&gt;')"><u>U</u></span>
+      <span class="mm-style" onclick="mmWrap('&lt;strikethrough&gt;','&lt;/strikethrough&gt;')"><s>S</s></span>
+      <span class="mm-style" onclick="mmWrap('&lt;reset&gt;','')">↺</span>
     </div>
-    <div>
-      <label>Действие</label>
-      <select id="action"></select>
-    </div>
+    <h2 class="section">Preview</h2>
+    <div class="mm-preview" id="mmPreview"></div>
   </div>
-  <label>Аргументы (JSON)</label>
-  <input id="args" value='{}'>
-  <div class="row">
-    <button class="accent" onclick="send()">Отправить</button>
-    <button class="secondary" onclick="loadUsers()">Обновить список</button>
+  <div style="font-size:.82rem; color:var(--dim); margin:.5rem 0;">Онлайн: <span id="onlineCount">0</span> | Роль: <span id="myRole">—</span></div>
+  <div id="status" style="margin-bottom:.4rem;"></div>
+  <button class="btn accent" onclick="send()">Send</button>
+  <button class="btn" onclick="location.reload()">Close</button>
+</div>
+<div id="panelScenarios" class="panel-card" style="display:none;">
+  <h2 class="section">Сценарий</h2>
+  <div class="dd"><div class="dd-btn" onclick="toggleDD('scenDD')"><span id="scenLabel">—</span><span class="arrow">▼</span></div><div class="dd-list hidden" id="scenDD"></div></div>
+  <div style="display:flex; gap:.4rem; margin:.4rem 0;">
+    <button class="btn accent" style="flex:1" onclick="newScenario()">+ Новый</button>
+    <button class="btn" style="flex:1" onclick="delScenario()">✕ Удалить</button>
   </div>
-  <label id="status"></label>
+  <h2 class="section">Шаги</h2>
+  <div id="stepsList"></div>
+  <h2 class="section">Добавить шаг из формы выше</h2>
+  <button class="btn accent" onclick="addStepFromForm()">＋ Добавить</button>
+  <h2 class="section">Запуск</h2>
+  <label>Циклов</label><input type="number" id="scenLoops" value="1" min="1" max="100">
+  <label>Автозапуск, мин (0=выкл)</label><input type="number" id="scenSchedule" value="0" min="0" max="1440">
+  <div style="display:flex; gap:.4rem; margin:.5rem 0;">
+    <button class="btn accent" style="flex:1" onclick="runScenario()">▶ Запуск</button>
+    <button class="btn" style="flex:1" onclick="stopScenario()">■ Стоп</button>
+  </div>
+  <div id="scenStatus" style="font-size:.82rem; color:var(--yellow); min-height:1.2em;"></div>
+  <button class="btn" onclick="switchTab('actions')">← К действиям</button>
 </div>
-
-<div class="card hidden" id="logCard">
-  <label>Журнал</label>
-  <div id="log"></div>
+<div id="panelLog" class="panel-card" style="display:none;">
+  <h2 class="section">Статистика</h2>
+  <div id="statsBox" style="font-size:.85rem; color:var(--field); margin-bottom:.8rem;"></div>
+  <h2 class="section">История команд</h2>
+  <div id="historyBox"></div>
+  <button class="btn" style="margin-top:.5rem" onclick="loadLog()">⟳ Обновить</button>
 </div>
-
 <script>
-let ACCESS = null;
-let actions = [];
-
-function log(msg) {
-  const el = document.getElementById('log');
-  el.innerHTML = `<div>${new Date().toLocaleTimeString()} — ${msg}</div>` + el.innerHTML;
-}
+const API = location.origin;
+let ACCESS = null, actions = [], users = [];
+let selectedTarget = '', selectedAction = null, fieldValues = {};
+let favs = JSON.parse(localStorage.getItem('sd_favs') || '[]');
+let scenarioIdx = -1, scenarios = [];
 
 async function login() {
   const rt = document.getElementById('refreshToken').value.trim();
-  const r = await fetch('/auth/refresh', { method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: rt }) });
+  const r = await fetch(API + '/auth/refresh', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt }) });
   if (!r.ok) { alert('Токен отклонён: ' + r.status); return; }
   ACCESS = (await r.json()).access_token;
-  document.getElementById('loginCard').classList.add('hidden');
-  document.getElementById('mainCard').classList.remove('hidden');
-  document.getElementById('logCard').classList.remove('hidden');
-  await loadUsers();
-  actions = await (await fetch('/actions')).json();
-  const sel = document.getElementById('action');
-  actions.forEach(a => {
-    const o = document.createElement('option');
-    o.value = a.id; o.textContent = a.name;
-    sel.appendChild(o);
-  });
-  sel.onchange = fillArgs;
-  fillArgs();
+  sessionStorage.setItem('sd_access', ACCESS);
+  await boot();
 }
 
-function fillArgs() {
-  const id = document.getElementById('action').value;
-  const a = actions.find(x => x.id === id);
-  const def = {};
-  (a?.schema || []).forEach(f => {
-    if (f.required || f.default !== undefined && f.default !== null)
-      def[f.key] = f.default ?? '';
-  });
-  document.getElementById('args').value = JSON.stringify(def);
+async function trySession() {
+  ACCESS = sessionStorage.getItem('sd_access');
+  if (!ACCESS) return false;
+  try { const r = await fetch(API + '/users', { headers: { Authorization: 'Bearer ' + ACCESS } }); return r.status === 200; } catch { return false; }
 }
 
-async function loadUsers() {
-  const r = await fetch('/users', { headers: { Authorization: 'Bearer ' + ACCESS } });
-  if (!r.ok) { log('Ошибка /users: ' + r.status); return; }
-  const users = (await r.json()).users;
-  const sel = document.getElementById('target');
-  sel.innerHTML = '';
+async function boot() {
+  const [acts, us] = await Promise.all([
+    fetch(API + '/actions').then(r => r.json()),
+    fetch(API + '/users', { headers: { Authorization: 'Bearer ' + ACCESS } }).then(r => r.json()),
+  ]);
+  actions = acts; users = us.users || [];
+  renderTargetDD(); renderActionDD();
+  document.getElementById('onlineCount').textContent = users.filter(u => u.online).length;
+}
+
+function switchTab(tab) {
+  ['actions','scenarios','log'].forEach(t => {
+    const panel = document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1));
+    const tabEl = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (panel) panel.style.display = t === tab ? 'block' : 'none';
+    if (tabEl) tabEl.classList.toggle('active', t === tab);
+  });
+  if (tab === 'log') loadLog();
+  if (tab === 'scenarios') { loadWebScenarios().then(renderScenDD); }
+}
+
+function toggleDD(id) {
+  const el = document.getElementById(id);
+  document.querySelectorAll('.dd-list').forEach(d => { if (d.id !== id) d.classList.add('hidden'); });
+  el.classList.toggle('hidden');
+}
+function closeDDs() { document.querySelectorAll('.dd-list').forEach(d => d.classList.add('hidden')); }
+document.addEventListener('click', e => { if (!e.target.closest('.dd')) closeDDs(); });
+
+function renderTargetDD() {
+  const el = document.getElementById('targetList'); el.innerHTML = '';
   users.forEach(u => {
-    const o = document.createElement('option');
-    o.value = u.username;
-    o.textContent = (u.online ? '● ' : '○ ') + u.username + ' (' + u.role + ')';
-    sel.appendChild(o);
+    const row = document.createElement('div'); row.className = 'dd-row';
+    row.innerHTML = '<span class="' + (u.online ? 'dot-on' : 'dot-off') + '">●</span> ' + u.username;
+    row.onclick = () => { selectedTarget = u.username; closeDDs(); document.getElementById('targetLabel').innerHTML = '<span class="' + (u.online ? 'dot-on' : 'dot-off') + '">●</span> ' + u.username; };
+    el.appendChild(row);
   });
+}
+
+function renderActionDD() {
+  const el = document.getElementById('actionDD'); el.innerHTML = '';
+  actions.sort((a, b) => (favs.includes(b.id) ? 1 : 0) - (favs.includes(a.id) ? 1 : 0) || a.id.localeCompare(b.id));
+  actions.forEach(a => {
+    const row = document.createElement('div'); row.className = 'dd-row';
+    row.textContent = a.name || a.id.split(':')[1];
+    row.onclick = () => { selectedAction = a; closeDDs(); document.getElementById('actionLabel').textContent = a.name || a.id; renderArgFields(); };
+    el.appendChild(row);
+  });
+}
+
+function renderArgFields() {
+  const c = document.getElementById('argFields'); c.innerHTML = '';
+  if (!selectedAction) return;
+  (selectedAction.schema || []).forEach(f => {
+    const wrap = document.createElement('div'); wrap.style.marginBottom = '.5rem';
+    const lbl = document.createElement('div'); lbl.className = 'arg-label';
+    lbl.innerHTML = f.key + ' <span style="color:var(--dim)">(' + f.type + ')</span>' + (f.required ? ' <span style="color:var(--red)">*</span>' : '');
+    wrap.appendChild(lbl);
+    if (f.allowedValues && f.allowedValues.length) {
+      const sel = document.createElement('select');
+      f.allowedValues.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
+      sel.id = 'arg_' + f.key;
+      sel.style.cssText = 'width:100%;padding:.4rem .5rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);border-radius:2px;font-size:.88rem';
+      wrap.appendChild(sel);
+    } else {
+      const inp = document.createElement('input');
+      inp.type = f.type === 'int' || f.type === 'float' ? 'number' : 'text';
+      if (f.default !== undefined && f.default !== null) inp.value = f.default;
+      if (f.description) inp.placeholder = f.description;
+      inp.id = 'arg_' + f.key; inp.maxLength = 256;
+      inp.style.cssText = 'width:100%;padding:.4rem .5rem;background:var(--card2);border:1px solid var(--border2);color:var(--white);border-radius:2px;font-size:.88rem';
+      wrap.appendChild(inp);
+    }
+    c.appendChild(wrap);
+  });
+  const isMM = selectedAction?.id === 'shigusdream:show_message';
+  document.getElementById('mmEditor').style.display = isMM ? 'block' : 'none';
+  if (isMM) mmInitPalette();
 }
 
 async function send() {
-  let args = {};
-  try { args = JSON.parse(document.getElementById('args').value || '{}'); }
-  catch (e) { alert('Невалидный JSON аргументов'); return; }
-  const body = {
-    target: document.getElementById('target').value,
-    action: document.getElementById('action').value,
-    args: args,
-  };
-  const r = await fetch('/commands', { method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ACCESS },
-    body: JSON.stringify(body) });
-  const status = document.getElementById('status');
-  if (r.ok) { const j = await r.json(); status.textContent = 'Отправлено: ' + JSON.stringify(j); log('→ ' + body.action + ' @ ' + body.target); }
-  else { const e = await r.json().catch(() => ({})); status.textContent = 'Ошибка ' + r.status + ': ' + (e.message || ''); }
+  const action = selectedAction; if (!action) return;
+  const args = {};
+  (action.schema || []).forEach(f => {
+    const el = document.getElementById('arg_' + f.key); if (!el) return;
+    const v = el.value.trim(); if (!v) return;
+    if (f.type === 'int') args[f.key] = parseInt(v) || 0;
+    else if (f.type === 'float') args[f.key] = parseFloat(v) || 0;
+    else args[f.key] = v;
+  });
+  if (!selectedTarget || selectedTarget === '—') { alert('Выберите цель'); return; }
+  const r = await fetch(API + '/commands', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ACCESS },
+    body: JSON.stringify({ target: selectedTarget, action: action.id, args }) });
+  if (r.ok) alert('✔ Отправлено'); else { const e = await r.json().catch(() => ({})); alert('✖ ' + (e.message || r.status)); }
 }
+
+async function loadLog() {
+  const s = await fetch(API + '/web/stats', { headers: { Authorization: 'Bearer ' + ACCESS } }).then(r => r.json());
+  document.getElementById('statsBox').innerHTML = 'Всего: ' + s.total + ' | ✔: ' + s.executed + ' | ✖: ' + s.failed;
+  const h = await fetch(API + '/web/history', { headers: { Authorization: 'Bearer ' + ACCESS } }).then(r => r.json());
+  document.getElementById('historyBox').innerHTML = (h.history || []).map(x =>
+    '<div class="log-line">' + x.created_at.slice(11, 19) + ' ' + (x.status === 'executed' ? '✔' : '✖') + ' ' + x.action + ' → ' + x.target + '</div>').join('') || 'Пусто';
+}
+
+async function loadWebScenarios() {
+  const r = await fetch(API + '/web/scenarios', { headers: { Authorization: 'Bearer ' + ACCESS } });
+  scenarios = r.ok ? (await r.json()).scenarios : [];
+}
+function renderScenDD() {
+  const el = document.getElementById('scenDD'); el.innerHTML = '';
+  if (!scenarios.length) el.innerHTML = '<div class="dd-row">Нет сценариев</div>';
+  scenarios.forEach((s, i) => {
+    const row = document.createElement('div'); row.className = 'dd-row'; row.textContent = s.name;
+    row.onclick = () => { scenarioIdx = i; closeDDs(); document.getElementById('scenLabel').textContent = s.name; };
+    el.appendChild(row);
+  });
+  document.getElementById('scenLabel').textContent = scenarios[scenarioIdx]?.name || '—';
+}
+function newScenario() {
+  const name = prompt('Название:'); if (!name) return;
+  fetch(API + '/web/scenarios', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ACCESS }, body: JSON.stringify({ name, steps: [], loops: 1, scheduled_minutes: 0 }) }).then(() => loadWebScenarios().then(renderScenDD));
+}
+function delScenario() {
+  const s = scenarios[scenarioIdx]; if (!s) return;
+  fetch(API + '/web/scenarios/' + encodeURIComponent(s.name), { method: 'DELETE', headers: { Authorization: 'Bearer ' + ACCESS } }).then(() => loadWebScenarios().then(renderScenDD));
+}
+function addStepFromForm() {
+  if (!selectedAction || !selectedTarget) { alert('Выберите действие и цель на вкладке Действия'); return; }
+  const args = {};
+  (selectedAction.schema || []).forEach(f => {
+    const el = document.getElementById('arg_' + f.key); if (!el) return;
+    const v = el.value.trim(); if (!v) return;
+    if (f.type === 'int') args[f.key] = parseInt(v) || 0;
+    else if (f.type === 'float') args[f.key] = parseFloat(v) || 0;
+    else args[f.key] = v;
+  });
+  const s = scenarios[scenarioIdx]; if (!s) { alert('Выберите сценарий'); return; }
+  s.steps.push({ target: selectedTarget, action: selectedAction.id, args, delay_ms: 1000, repeat: 1, wait_for_result: true, stop_on_error: true });
+  saveScenario(s); renderStepsList();
+}
+function renderStepsList() {
+  const s = scenarios[scenarioIdx]; const el = document.getElementById('stepsList'); el.innerHTML = '';
+  if (!s || !s.steps.length) { el.innerHTML = '<div style="color:var(--dim);padding:.3rem .5rem">Нет шагов</div>'; return; }
+  s.steps.forEach((st, i) => {
+    const row = document.createElement('div'); row.className = 'step-row';
+    row.textContent = (i + 1) + '. ' + st.action.split(':')[1] + ' → ' + st.target + ' (' + st.delay_ms + 'мс)'; el.appendChild(row);
+  });
+}
+function saveScenario(s) {
+  fetch(API + '/web/scenarios', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ACCESS }, body: JSON.stringify(s) });
+}
+function runScenario() {
+  const s = scenarios[scenarioIdx]; if (!s) return; saveScenario(s);
+  fetch(API + '/web/scenarios/' + encodeURIComponent(s.name) + '/run', { method: 'POST', headers: { Authorization: 'Bearer ' + ACCESS } }).then(r => r.json()).then(j => {
+    document.getElementById('scenStatus').textContent = '▶ Запущен';
+  });
+}
+function stopScenario() {
+  fetch(API + '/web/runs', { headers: { Authorization: 'Bearer ' + ACCESS } }).then(r => r.json()).then(j => {
+    j.runs.filter(r => r.status === 'running').forEach(r => {
+      fetch(API + '/web/runs/' + r.run_id + '/stop', { method: 'POST', headers: { Authorization: 'Bearer ' + ACCESS } });
+    });
+    document.getElementById('scenStatus').textContent = '■ Остановлено';
+  });
+}
+
+const MM_COLORS = { black:'#000000', dark_blue:'#0000AA', dark_green:'#00AA00', dark_aqua:'#00AAAA', dark_red:'#AA0000', dark_purple:'#AA00AA', gold:'#FFAA00', gray:'#AAAAAA', dark_gray:'#555555', blue:'#5555FF', green:'#55FF55', aqua:'#55FFFF', red:'#FF5555', light_purple:'#FF55FF', yellow:'#FFFF55', white:'#FFFFFF' };
+function mmInitPalette() {
+  const pal = document.getElementById('mmPalette'); pal.innerHTML = '';
+  Object.entries(MM_COLORS).forEach(([name, hex]) => {
+    const s = document.createElement('span'); s.className = 'mm-swatch'; s.style.background = hex; s.title = name;
+    s.onclick = () => mmInsert('<' + name + '>', '</' + name + '>'); pal.appendChild(s);
+  });
+}
+function mmInsert(open, close) {
+  const el = document.getElementById('arg_text'); if (!el) return;
+  const v = el.value; el.value = v ? open + v + close : open + close; mmUpdatePreview();
+}
+function mmUpdatePreview() {
+  const el = document.getElementById('arg_text'); if (!el) return;
+  const preview = document.getElementById('mmPreview'); if (!preview) return;
+  preview.innerHTML = mmToHtml(el.value);
+}
+function mmToHtml(input) {
+  const COLORS = MM_COLORS; let html = ''; const stack = [{}]; let i = 0;
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const cur = () => stack[stack.length - 1];
+  while (i < input.length) {
+    if (input[i] === '<') {
+      const end = input.indexOf('>', i);
+      if (end === -1) { html += esc(input.slice(i)); break; }
+      const tag = input.slice(i + 1, end).trim(); i = end + 1;
+      if (tag.startsWith('/')) { if (stack.length > 1) stack.pop(); continue; }
+      if (tag === 'reset' || tag === 'r') { stack.length = 0; stack.push({}); continue; }
+      const color = COLORS[tag] || (tag.match(/^#[0-9a-fA-F]{6}$/) ? '#' + tag.slice(1) : null);
+      if (color) { stack.push({...cur(), color}); continue; }
+      const styles = { bold:'font-weight:bold', b:'font-weight:bold', italic:'font-style:italic', i:'font-style:italic', underlined:'text-decoration:underline', u:'text-decoration:underline', strikethrough:'text-decoration:line-through', st:'text-decoration:line-through' };
+      if (styles[tag]) { stack.push({...cur(), extra: styles[tag]}); continue; }
+      html += esc('<' + tag + '>'); continue;
+    }
+    const next = input.indexOf('<', i);
+    const chunk = next === -1 ? input.slice(i) : input.slice(i, next);
+    const st = cur(); let css = '';
+    if (st.color) css += 'color:' + st.color + ';';
+    if (st.bold) css += 'font-weight:bold;';
+    if (st.italic) css += 'font-style:italic;';
+    if (st.underline) css += 'text-decoration:underline;';
+    if (st.strike) css += 'text-decoration:line-through;';
+    html += '<span style="' + css + '">' + esc(chunk) + '</span>';
+    i += chunk.length;
+  }
+  return html || '&nbsp;';
+}
+
+window.onload = async () => {
+  try {
+    const health = await fetch(API + '/health').then(r => r.json()).catch(() => null);
+    document.getElementById('connDot').innerHTML = health?.status === 'ok' ? '<span class="dot-on">● Online</span>' : '<span class="dot-off">○ Offline</span>';
+  } catch {}
+  const logged = await trySession();
+  if (logged) { await boot(); return; }
+  ['panelActions','panelScenarios','panelLog'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+};
 </script>
 </body>
 </html>
