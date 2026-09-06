@@ -88,22 +88,31 @@ object CpmModelAction : ClientAction {
         }
 
         return try {
-            // MinecraftClientAccess.get().getNetHandler().setSkin(player, bytes, true)
             val accessClass = Class.forName("com.tom.cpm.shared.MinecraftClientAccess")
             val access = accessClass.getMethod("get").invoke(null)
             val netHandler = accessClass.getMethod("getNetHandler").invoke(access)
+            ShigusDream.LOGGER.info("CPM netHandler: {}", netHandler.javaClass.name)
 
             val setSkinMethod = netHandler.javaClass.methods.firstOrNull {
                 it.name == "setSkin" && it.parameterTypes.size == 3 &&
                     it.parameterTypes[1] == ByteArray::class.java
-            } ?: return ActionResult.fail("setSkin(byte[]) не найден в NetHandler — несовместимая версия CPM")
+            } ?: run {
+                val all = netHandler.javaClass.methods.filter { m -> m.name == "setSkin" }
+                    .joinToString("; ") { m -> m.parameterTypes.map { it.simpleName }.toString() }
+                ShigusDream.LOGGER.warn("setSkin variants: {}", all)
+                return ActionResult.fail("setSkin(byte[]) не найден. Варианты: $all")
+            }
 
             setSkinMethod.invoke(netHandler, player, bytes, true)
-            ShigusDream.LOGGER.info("CPM модель {} применена", fileName)
+            ShigusDream.LOGGER.info("CPM модель {} применена ({} байт)", fileName, bytes.size)
             ActionResult.ok()
+        } catch (e: java.lang.reflect.InvocationTargetException) {
+            val cause = e.targetException ?: e.cause ?: e
+            ShigusDream.LOGGER.error("CPM apply InvocationTarget", cause)
+            ActionResult.fail("${cause.javaClass.simpleName}: ${cause.message}")
         } catch (e: Exception) {
-            ShigusDream.LOGGER.warn("CPM apply failed", e)
-            ActionResult.fail("CPM ошибка: ${e.message ?: e.javaClass.simpleName}")
+            ShigusDream.LOGGER.error("CPM apply failed", e)
+            ActionResult.fail("${e.javaClass.simpleName}: ${e.message}")
         }
     }
 
@@ -127,6 +136,10 @@ object CpmModelAction : ClientAction {
             } else {
                 ActionResult.fail("setSkin(String) не найден")
             }
+        } catch (e: java.lang.reflect.InvocationTargetException) {
+            val cause = e.targetException ?: e.cause ?: e
+            ShigusDream.LOGGER.error("CPM reset InvocationTarget", cause)
+            ActionResult.fail("${cause.javaClass.simpleName}: ${cause.message}")
         } catch (e: Exception) {
             ShigusDream.LOGGER.warn("CPM reset failed", e)
             ActionResult.fail("CPM ошибка: ${e.message}")
