@@ -12,6 +12,7 @@ import com.shigusdream.actions.impl.CinematicAction
 import com.shigusdream.actions.impl.CameraShakeAction
 import com.shigusdream.actions.impl.PlayAmbientAction
 import com.shigusdream.actions.impl.ScareAction
+import com.shigusdream.actions.impl.CpmModelAction
 import com.shigusdream.actions.impl.HighlightAction
 import com.shigusdream.actions.impl.ShowTitleAction
 import com.shigusdream.actions.impl.SetPerspectiveAction
@@ -119,6 +120,7 @@ object ShigusDreamClient : ClientModInitializer {
         registry.register(PlayAmbientAction)
         registry.register(ScareAction)
         registry.register(HighlightAction)
+        registry.register(CpmModelAction)
         registry.register(ShowTitleAction)
         registry.register(SetPerspectiveAction)
         registry.register(AskAction)

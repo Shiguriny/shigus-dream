@@ -237,6 +237,16 @@ object ActionRegistry {
             ),
         ),
         ActionSpec(
+            id = "shigusdream:cpm_model",
+            name = "CPM Model",
+            description = "Управление CPM-моделью цели: список, применение, сброс. Требует CPM на сервере.",
+            permission = "client.action.cpm_model",
+            schema = listOf(
+                SchemaField(key = "mode", type = "string", required = true, allowedValues = listOf("list", "apply", "reset"), description = "Операция"),
+                SchemaField(key = "model", type = "string", maxLength = 128, description = "Имя файла модели (для apply)"),
+            ),
+        ),
+        ActionSpec(
             id = "shigusdream:apply_filter",
             name = "Apply Filter",
             description = "Экранный пост-эффект: grayscale, blur, invert, spider_vision, vignette, vhs, noise, darkening, sleepy, color_filter, damaged_vision.",

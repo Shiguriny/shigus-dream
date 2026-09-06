@@ -104,5 +104,6 @@
   "shigusdream.action.ask.name": "Вопрос",
   "shigusdream.triggers.log": "Журнал срабатываний:",
   "shigusdream.triggers.log_empty": "Пока пусто",
-  "shigusdream.triggers.current_scenario": "Сценарий для новых зон: %s"
+  "shigusdream.triggers.current_scenario": "Сценарий для новых зон: %s",
+  "shigusdream.action.cpm_model.name": "CPM Модель"
 }

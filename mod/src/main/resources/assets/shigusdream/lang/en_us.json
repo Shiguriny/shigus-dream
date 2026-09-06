@@ -104,5 +104,6 @@
   "shigusdream.action.ask.name": "Ask",
   "shigusdream.triggers.log": "Fired log:",
   "shigusdream.triggers.log_empty": "Nothing yet",
-  "shigusdream.triggers.current_scenario": "Scenario for new zones: %s"
+  "shigusdream.triggers.current_scenario": "Scenario for new zones: %s",
+  "shigusdream.action.cpm_model.name": "CPM Model"
 }

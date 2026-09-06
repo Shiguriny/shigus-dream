@@ -57,6 +57,8 @@ data class ActionResult(
     companion object {
         fun ok() = ActionResult(true)
         fun fail(error: String) = ActionResult(false, error)
+        /** Успешное выполнение с данными для отправителя (передаются через note). */
+        fun note(text: String) = ActionResult(true, note = text)
     }
 }
 
