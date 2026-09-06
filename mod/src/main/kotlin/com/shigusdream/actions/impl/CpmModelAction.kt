@@ -45,7 +45,7 @@ object CpmModelAction : ClientAction {
         val player = mc.player ?: return ActionResult.fail("no_player")
 
         val mode = context.args.get("mode")?.asString ?: return ActionResult.fail("missing mode")
-        val modelsDir = net.fabricmc.loader.api.FabricLoader.getInstance().gameDir.resolve("config").resolve(CPM_MODELS_DIR)
+        val modelsDir = net.fabricmc.loader.api.FabricLoader.getInstance().gameDir.resolve(CPM_MODELS_DIR)
 
         return when (mode) {
             "list" -> listModels(modelsDir)
