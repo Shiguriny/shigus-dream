@@ -6,7 +6,8 @@
   "client": [
     "MouseHandlerMixin",
     "MultiPlayerGameModeMixin",
-    "MinecraftMixin"
+    "MinecraftMixin",
+    "EntityRenderDispatcherMixin"
   ],
   "injectors": {
     "defaultRequire": 1

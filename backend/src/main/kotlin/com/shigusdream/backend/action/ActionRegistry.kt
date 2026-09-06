@@ -247,6 +247,17 @@ object ActionRegistry {
             ),
         ),
         ActionSpec(
+            id = "shigusdream:hide_player",
+            name = "Hide Player",
+            description = "Скрывает или показывает игрока для цели (клиентский визуальный эффект).",
+            permission = "client.action.hide_player",
+            schema = listOf(
+                SchemaField(key = "entity", type = "string", required = true, maxLength = 16, description = "Ник игрока"),
+                SchemaField(key = "visible", type = "bool", description = "true = показать, false = скрыть"),
+                SchemaField(key = "duration", type = "int", min = 0.0, max = 24000.0, description = "Тиков (0 = пока не вернуть)"),
+            ),
+        ),
+        ActionSpec(
             id = "shigusdream:apply_filter",
             name = "Apply Filter",
             description = "Экранный пост-эффект: grayscale, blur, invert, spider_vision, vignette, vhs, noise, darkening, sleepy, color_filter, damaged_vision.",

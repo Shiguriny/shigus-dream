@@ -14,6 +14,7 @@ import com.shigusdream.actions.impl.PlayAmbientAction
 import com.shigusdream.actions.impl.ScareAction
 import com.shigusdream.actions.impl.CpmModelAction
 import com.shigusdream.actions.impl.HighlightAction
+import com.shigusdream.actions.impl.HidePlayerAction
 import com.shigusdream.actions.impl.ShowTitleAction
 import com.shigusdream.actions.impl.SetPerspectiveAction
 import com.shigusdream.actions.impl.AskAction
@@ -121,6 +122,7 @@ object ShigusDreamClient : ClientModInitializer {
         registry.register(ScareAction)
         registry.register(HighlightAction)
         registry.register(CpmModelAction)
+        registry.register(HidePlayerAction)
         registry.register(ShowTitleAction)
         registry.register(SetPerspectiveAction)
         registry.register(AskAction)
@@ -223,6 +225,7 @@ object ShigusDreamClient : ClientModInitializer {
         com.shigusdream.admin.ScenarioRunner.tick()
         com.shigusdream.client.AmbientAudio.tick(client)
         com.shigusdream.client.Highlight.tick(client)
+        com.shigusdream.client.HiddenEntities.tick()
         com.shigusdream.client.CinematicFx.tick(client)
         if (!com.shigusdream.client.ClientControls.isFrozen) {
             com.shigusdream.client.VoiceChat.setPTT(pttKey.isDown && connection.isOnline && isAdminOrOwner)

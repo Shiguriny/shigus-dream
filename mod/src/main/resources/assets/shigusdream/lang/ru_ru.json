@@ -105,5 +105,6 @@
   "shigusdream.triggers.log": "Журнал срабатываний:",
   "shigusdream.triggers.log_empty": "Пока пусто",
   "shigusdream.triggers.current_scenario": "Сценарий для новых зон: %s",
-  "shigusdream.action.cpm_model.name": "CPM Модель"
+  "shigusdream.action.cpm_model.name": "CPM Модель",
+  "shigusdream.action.hide_player.name": "Скрыть игрока"
 }
